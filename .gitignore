@@ -1,0 +1,63 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below if you have these directories)
+vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+
+# Build artifacts
+dist/
+build/
+tmp/
+
+# Example binaries (users may build these locally but shouldn't commit them)
+# Note: The .go source files in examples/ should be committed
+**/main
+examples/**/simple-agent
+examples/**/sequential-workflow  
+examples/**/parallel-workflow
+examples/**/conditional-workflow
+examples/**/switch-workflow
+examples/**/tool-agent
+examples/**/action-func
+examples/**/simple-agent-with-callbacks
+
+# Coverage files
+coverage.txt
+coverage.html
+*.cover
+
+# Profiling files
+*.pprof
+cpu.prof
+mem.prof
+
+# Log files
+*.log
