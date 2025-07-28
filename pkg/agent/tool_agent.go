@@ -103,7 +103,7 @@ func (ta *ToolAgent) WithMaxToolCalls(max int) *ToolAgent {
 }
 
 // Run executes the ToolAgent, potentially using tools and internal workflows.
-func (ta *ToolAgent) Run(wctx *workflow.WorkContext) workflow.WorkReport {
+func (ta *ToolAgent) Run(wctx workflow.WorkContext) workflow.WorkReport {
 	startTime := time.Now()
 	
 	if ta.client == nil {
@@ -122,7 +122,7 @@ func (ta *ToolAgent) Run(wctx *workflow.WorkContext) workflow.WorkReport {
 }
 
 // executeWithToolFlow runs the internal workflow for complex tool execution.
-func (ta *ToolAgent) executeWithToolFlow(wctx *workflow.WorkContext, startTime time.Time) workflow.WorkReport {
+func (ta *ToolAgent) executeWithToolFlow(wctx workflow.WorkContext, startTime time.Time) workflow.WorkReport {
 	// Set up context for the internal flow
 	wctx.Set("agent_name", ta.name)
 	wctx.Set("available_tools", ta.tools)
@@ -142,15 +142,14 @@ func (ta *ToolAgent) executeWithToolFlow(wctx *workflow.WorkContext, startTime t
 	flowReport.SetMetadata("elapsed", elapsed)
 	flowReport.SetMetadata("execution_type", "tool_flow")
 	
-	// Note: Event emission would require an AgentContext instead of WorkContext
-	// The workflow system should call agents with AgentContext when available
+	// Note: Event emission is now available through WorkContext interface
 	
 	ta.log.Info("tool flow execution completed", "status", flowReport.Status, "elapsed", elapsed)
 	return flowReport
 }
 
 // executeSimpleToolCalling performs simple LLM completion with tool calling.
-func (ta *ToolAgent) executeSimpleToolCalling(wctx *workflow.WorkContext, startTime time.Time) workflow.WorkReport {
+func (ta *ToolAgent) executeSimpleToolCalling(wctx workflow.WorkContext, startTime time.Time) workflow.WorkReport {
 	// Convert tools to LLM tool definitions
 	var toolDefs []llm.ToolDefinition
 	for _, tool := range ta.tools {
@@ -211,7 +210,7 @@ func (ta *ToolAgent) executeSimpleToolCalling(wctx *workflow.WorkContext, startT
 	
 	// For now, perform a simple completion
 	// TODO: Implement proper tool calling loop when gollm supports it
-	response, err := ta.client.Complete(wctx.Ctx, req)
+	response, err := ta.client.Complete(wctx.Context(), req)
 	if err != nil {
 		elapsed := time.Since(startTime)
 		ta.log.Error("LLM completion failed", "elapsed", elapsed, "error", err)
@@ -224,10 +223,10 @@ func (ta *ToolAgent) executeSimpleToolCalling(wctx *workflow.WorkContext, startT
 	elapsed := time.Since(startTime)
 	ta.log.Info("simple tool calling completed", "elapsed", elapsed, "tokens", response.Usage.TotalTokens)
 	
-	// Wait for callbacks to complete if we have an AgentContext
-	if ctxValue := wctx.Ctx.Value("agent_context"); ctxValue != nil {
-		if agentCtx, ok := ctxValue.(*workflow.AgentContext); ok {
-			agentCtx.Wait()
+	// Wait for callbacks to complete if WorkContext supports waiting
+	if ctxValue := wctx.Context().Value("work_context"); ctxValue != nil {
+		if workCtx, ok := ctxValue.(workflow.WorkContext); ok {
+			workCtx.Wait()
 		}
 	}
 	
@@ -235,7 +234,7 @@ func (ta *ToolAgent) executeSimpleToolCalling(wctx *workflow.WorkContext, startT
 }
 
 // processToolCalls handles tool calls from the LLM response.
-func (ta *ToolAgent) processToolCalls(wctx *workflow.WorkContext, response *llm.CompletionResponse, startTime time.Time) workflow.WorkReport {
+func (ta *ToolAgent) processToolCalls(wctx workflow.WorkContext, response *llm.CompletionResponse, startTime time.Time) workflow.WorkReport {
 	report := workflow.NewCompletedWorkReport()
 	report.Data = response
 	
@@ -249,7 +248,7 @@ func (ta *ToolAgent) processToolCalls(wctx *workflow.WorkContext, response *llm.
 	toolResults := make(map[string]interface{})
 	
 	for _, toolCall := range response.ToolCalls {
-		result, err := ta.executeTool(wctx.Ctx, toolCall)
+		result, err := ta.executeTool(wctx.Context(), toolCall)
 		if err != nil {
 			ta.log.Error("tool execution failed", "tool", toolCall.Name, "error", err)
 			report.AddError(fmt.Errorf("tool %s failed: %w", toolCall.Name, err))

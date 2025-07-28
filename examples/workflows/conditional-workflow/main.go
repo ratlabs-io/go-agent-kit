@@ -47,14 +47,14 @@ func main() {
 		WithClient(llmClient)
 	
 	// Create predicate functions
-	isTechnical := func(ctx *workflow.WorkContext) (bool, error) {
+	isTechnical := func(ctx workflow.WorkContext) (bool, error) {
 		if classification, ok := ctx.Get("previous_output"); ok {
 			return strings.Contains(strings.ToLower(fmt.Sprintf("%v", classification)), "technical"), nil
 		}
 		return false, nil
 	}
 	
-	isCreative := func(ctx *workflow.WorkContext) (bool, error) {
+	isCreative := func(ctx workflow.WorkContext) (bool, error) {
 		if classification, ok := ctx.Get("previous_output"); ok {
 			return strings.Contains(strings.ToLower(fmt.Sprintf("%v", classification)), "creative"), nil
 		}
@@ -65,7 +65,7 @@ func main() {
 	technicalCheck := workflow.NewConditionalFlow("technical-check", isTechnical, technicalAgent, nil)
 	creativeCheck := workflow.NewConditionalFlow("creative-check", isCreative, creativeAgent, nil)
 	generalFallback := workflow.NewConditionalFlow("general-fallback", 
-		func(ctx *workflow.WorkContext) (bool, error) { return true, nil }, // Always true as fallback
+		func(ctx workflow.WorkContext) (bool, error) { return true, nil }, // Always true as fallback
 		generalAgent, nil)
 	
 	// Create the main workflow

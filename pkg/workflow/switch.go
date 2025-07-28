@@ -77,7 +77,7 @@ func (sf *SwitchFlow) Name() string {
 // Run executes the SwitchFlow by evaluating conditions in order and running the first matching action.
 // If no conditions match and a default action is provided, runs the default action.
 // If no conditions match and no default action is provided, returns a skipped report.
-func (sf *SwitchFlow) Run(wctx *WorkContext) WorkReport {
+func (sf *SwitchFlow) Run(wctx WorkContext) WorkReport {
 	startTime := time.Now()
 	
 	// Evaluate each case in order

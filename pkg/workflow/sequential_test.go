@@ -18,7 +18,7 @@ func (ma *MockAction) Name() string {
 	return ma.name
 }
 
-func (ma *MockAction) Run(wctx *WorkContext) WorkReport {
+func (ma *MockAction) Run(wctx WorkContext) WorkReport {
 	if ma.delay > 0 {
 		time.Sleep(ma.delay)
 	}

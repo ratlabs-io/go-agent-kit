@@ -38,7 +38,7 @@ func (cf *ConditionalFlow) Name() string {
 // If the condition evaluates to true, runs the ifTrue action.
 // If the condition evaluates to false and ifFalse is provided, runs the ifFalse action.
 // If the condition evaluates to false and ifFalse is nil, returns a skipped report.
-func (cf *ConditionalFlow) Run(wctx *WorkContext) WorkReport {
+func (cf *ConditionalFlow) Run(wctx WorkContext) WorkReport {
 	startTime := time.Now()
 	
 	// Evaluate the condition

@@ -43,7 +43,7 @@ func (sf *SequentialFlow) Execute(action Action) *SequentialFlow {
 // ThenChain adds an action where the previous action's output becomes the user_input.
 // This rotates the context so each agent gets the previous agent's output as input.
 func (sf *SequentialFlow) ThenChain(action Action) *SequentialFlow {
-	chainAction := NewActionFunc(action.Name()+"_chain", func(ctx *WorkContext) WorkReport {
+	chainAction := NewActionFunc(action.Name()+"_chain", func(ctx WorkContext) WorkReport {
 		// Get previous output and set as user_input
 		if prevOutput, ok := ctx.Get("previous_output"); ok {
 			ctx.Set("user_input", prevOutput)
@@ -70,7 +70,7 @@ func (sf *SequentialFlow) ThenChain(action Action) *SequentialFlow {
 // ThenAccumulate adds an action where the previous output is accumulated with the original input.
 // This creates a snowball effect where each agent gets more context.
 func (sf *SequentialFlow) ThenAccumulate(action Action) *SequentialFlow {
-	accumulateAction := NewActionFunc(action.Name()+"_accumulate", func(ctx *WorkContext) WorkReport {
+	accumulateAction := NewActionFunc(action.Name()+"_accumulate", func(ctx WorkContext) WorkReport {
 		// Get original input if not already stored
 		if _, ok := ctx.Get("original_input"); !ok {
 			if userInput, exists := ctx.Get("user_input"); exists {
@@ -111,7 +111,7 @@ func (sf *SequentialFlow) ThenAccumulate(action Action) *SequentialFlow {
 // Run performs the actions in the SequentialFlow using the given work context.
 // It executes each action in sequence, stopping if any action fails.
 // The work context provides synchronized data sharing and cancellation capabilities.
-func (sf *SequentialFlow) Run(wctx *WorkContext) WorkReport {
+func (sf *SequentialFlow) Run(wctx WorkContext) WorkReport {
 	report := NewCompletedWorkReport()
 	logger := wctx.Logger().With("flow", "SequentialFlow", "name", sf.FlowName)
 	

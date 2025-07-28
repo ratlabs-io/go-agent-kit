@@ -37,14 +37,14 @@ callbacks.Add(func(ctx context.Context, event workflow.Event) {
 })
 ```
 
-### AgentContext Usage
+### WorkContext with Callbacks Usage
 ```go
-// Create AgentContext with callbacks (instead of plain WorkContext)
-agentCtx := workflow.NewAgentContext(ctx, callbacks, nil)
-agentCtx.Set("user_input", "What are the three largest cities in Japan?")
+// Create WorkContext with callbacks (instead of plain WorkContext)
+workCtx := workflow.NewWorkContextWithCallbacks(ctx, callbacks)
+workCtx.Set("user_input", "What are the three largest cities in Japan?")
 
 // Run agent - events will be automatically emitted to callbacks
-report := chatAgent.Run(agentCtx.WorkContext)
+report := chatAgent.Run(workCtx)
 ```
 
 ## Event Types

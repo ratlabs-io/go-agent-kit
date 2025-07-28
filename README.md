@@ -314,12 +314,12 @@ callbacks.Add(func(ctx context.Context, event workflow.Event) {
     }
 })
 
-// Create agent context with callbacks
-agentCtx := workflow.NewAgentContext(context.Background(), callbacks, nil)
-agentCtx.Set("user_input", "Your question here")
+// Create work context with callbacks
+workCtx := workflow.NewWorkContextWithCallbacks(context.Background(), callbacks)
+workCtx.Set("user_input", "Your question here")
 
 // Run agent - events will be emitted to callbacks
-report := chatAgent.Run(agentCtx.WorkContext)
+report := chatAgent.Run(workCtx)
 ```
 
 ## 🧪 Examples
@@ -329,6 +329,7 @@ Explore comprehensive examples in [`examples/workflows/`](./examples/workflows/)
 - **[simple-agent](./examples/workflows/simple-agent/)**: Basic chat completion
 - **[simple-agent-with-callbacks](./examples/workflows/simple-agent-with-callbacks/)**: Event monitoring
 - **[sequential-workflow](./examples/workflows/sequential-workflow/)**: Multi-step processing  
+- **[chaining-patterns](./examples/workflows/chaining-patterns/)**: Different sequential chaining strategies
 - **[parallel-workflow](./examples/workflows/parallel-workflow/)**: Concurrent execution
 - **[conditional-workflow](./examples/workflows/conditional-workflow/)**: Branching logic
 - **[switch-workflow](./examples/workflows/switch-workflow/)**: Priority-based routing

@@ -67,10 +67,10 @@ func main() {
 		WithPrompt("You are a helpful assistant. Respond concisely and helpfully.").
 		WithClient(llmClient)
 	
-	// Create AgentContext with callbacks (instead of plain WorkContext)
+	// Create WorkContext with callbacks (instead of plain WorkContext)
 	ctx := context.Background()
-	agentCtx := workflow.NewAgentContext(ctx, callbacks, nil) // nil for tool registry since we don't need tools
-	agentCtx.Set("user_input", "What are the three largest cities in Japan?")
+	workCtx := workflow.NewWorkContextWithCallbacks(ctx, callbacks)
+	workCtx.Set("user_input", "What are the three largest cities in Japan?")
 	
 	// Run the agent
 	fmt.Println("🚀 Running chat agent with callback monitoring...")
@@ -78,7 +78,7 @@ func main() {
 	fmt.Println()
 	
 	start := time.Now()
-	report := chatAgent.Run(agentCtx.WorkContext) // Pass the embedded WorkContext
+	report := chatAgent.Run(workCtx)
 	elapsed := time.Since(start)
 	
 	fmt.Println()

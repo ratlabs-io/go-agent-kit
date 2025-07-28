@@ -22,7 +22,13 @@ This directory contains practical examples demonstrating how to use the go-agent
 - Shows how to chain agent outputs with `ThenChain()`
 - Demonstrates `SequentialFlow` usage
 
-### 4. `parallel-workflow/`
+### 4. `chaining-patterns/`
+**Different sequential chaining strategies**
+- Compares `ThenChain()` vs `ThenAccumulate()` patterns
+- Shows how data flows through agent chains
+- Pipeline vs collaborative processing approaches
+
+### 5. `parallel-workflow/`
 **Parallel multi-agent workflow**
 - Multiple agents running simultaneously
 - Shows how to combine parallel execution results
@@ -55,8 +61,8 @@ This directory contains practical examples demonstrating how to use the go-agent
 ## Key Concepts Demonstrated
 
 ### Agent Types
-- **ChatAgent**: Simple 1-hop LLM completions
-- **ToolAgent**: Multi-step execution with tool calling
+- **ChatAgent**: Simple 1-hop LLM completions (text-only)
+- **ToolAgent**: Multi-step execution with tool calling capabilities
 
 ### Workflow Types  
 - **SequentialFlow**: Execute actions one after another
@@ -69,9 +75,9 @@ This directory contains practical examples demonstrating how to use the go-agent
 - **MCP Tools**: Connect to external Model Context Protocol servers
 
 ### Context Management
-- Shared data between workflow steps
+- Data sharing between workflow steps via `Set()`/`Get()`
 - Agent result storage and retrieval
-- Cross-agent communication
+- Cross-action communication through context
 
 ## Running Examples
 
@@ -86,13 +92,14 @@ export OPENAI_API_KEY=your-actual-api-key-here
 ```bash
 # Run any example directly
 go run examples/workflows/simple-agent/main.go
+go run examples/workflows/simple-agent-with-callbacks/main.go
 go run examples/workflows/sequential-workflow/main.go
+go run examples/workflows/chaining-patterns/main.go
 go run examples/workflows/parallel-workflow/main.go
 go run examples/workflows/conditional-workflow/main.go
 go run examples/workflows/switch-workflow/main.go
 go run examples/workflows/tool-agent/main.go
 go run examples/workflows/action-func/main.go
-go run examples/workflows/simple-agent-with-callbacks/main.go
 ```
 
 **Note**: If the `OPENAI_API_KEY` environment variable is not set, the examples will show an error message and exit gracefully.
@@ -139,6 +146,6 @@ These examples can be combined and extended:
 1. **Agent Naming**: Use descriptive names for debugging and monitoring
 2. **Prompt Engineering**: Tailor prompts to specific tasks and contexts
 3. **Tool Design**: Keep tools focused and composable
-4. **Context Management**: Use meaningful keys for shared data
+4. **Context Management**: Use meaningful keys for context data
 5. **Error Handling**: Always check workflow reports for errors
 6. **Resource Cleanup**: Call `Close()` on LLM clients when done

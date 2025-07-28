@@ -9,5 +9,5 @@ type Action interface {
 	// Run executes the action with the given work context and returns a report.
 	// The work context provides synchronized data sharing and cancellation capabilities.
 	// All errors should be reported via the WorkReport.Status and WorkReport.Errors fields.
-	Run(wctx *WorkContext) WorkReport
+	Run(wctx WorkContext) WorkReport
 }

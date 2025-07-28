@@ -16,7 +16,7 @@ func main() {
 	fmt.Println()
 	
 	// Create simple actions using ActionFunc - much cleaner!
-	preprocessAction := workflow.NewActionFunc("preprocess", func(ctx *workflow.WorkContext) workflow.WorkReport {
+	preprocessAction := workflow.NewActionFunc("preprocess", func(ctx workflow.WorkContext) workflow.WorkReport {
 		if text, ok := ctx.Get("input_text"); ok {
 			if textStr, ok := text.(string); ok {
 				processed := strings.TrimSpace(strings.ToLower(textStr))
@@ -28,7 +28,7 @@ func main() {
 		return workflow.NewFailedWorkReport(fmt.Errorf("no input_text provided"))
 	})
 	
-	validateAction := workflow.NewActionFunc("validate", func(ctx *workflow.WorkContext) workflow.WorkReport {
+	validateAction := workflow.NewActionFunc("validate", func(ctx workflow.WorkContext) workflow.WorkReport {
 		if text, ok := ctx.Get("processed_text"); ok {
 			if textStr, ok := text.(string); ok {
 				if len(textStr) < 5 {
@@ -43,7 +43,7 @@ func main() {
 		return workflow.NewFailedWorkReport(fmt.Errorf("no processed_text provided"))
 	})
 	
-	transformAction := workflow.NewActionFunc("transform", func(ctx *workflow.WorkContext) workflow.WorkReport {
+	transformAction := workflow.NewActionFunc("transform", func(ctx workflow.WorkContext) workflow.WorkReport {
 		if validated, ok := ctx.Get("validated"); ok && validated.(bool) {
 			if text, ok := ctx.Get("processed_text"); ok {
 				if textStr, ok := text.(string); ok {
@@ -62,7 +62,7 @@ func main() {
 		return workflow.NewFailedWorkReport(fmt.Errorf("validation not passed or no processed_text"))
 	})
 	
-	logAction := workflow.NewActionFunc("log", func(ctx *workflow.WorkContext) workflow.WorkReport {
+	logAction := workflow.NewActionFunc("log", func(ctx workflow.WorkContext) workflow.WorkReport {
 		fmt.Println("\n📊 Context State:")
 		fmt.Println("----------------")
 		for _, key := range []string{"input_text", "processed_text", "validated", "result"} {
@@ -112,28 +112,28 @@ func main() {
 	fmt.Println("------------------------")
 	
 	// Create parallel actions that simulate async operations
-	asyncAction1 := workflow.NewActionFunc("async1", func(ctx *workflow.WorkContext) workflow.WorkReport {
+	asyncAction1 := workflow.NewActionFunc("async1", func(ctx workflow.WorkContext) workflow.WorkReport {
 		time.Sleep(100 * time.Millisecond)
 		fmt.Println("⚡ Async action 1 completed")
 		ctx.Set("async1_result", "data from async1")
 		return workflow.NewCompletedWorkReport()
 	})
 	
-	asyncAction2 := workflow.NewActionFunc("async2", func(ctx *workflow.WorkContext) workflow.WorkReport {
+	asyncAction2 := workflow.NewActionFunc("async2", func(ctx workflow.WorkContext) workflow.WorkReport {
 		time.Sleep(50 * time.Millisecond)
 		fmt.Println("⚡ Async action 2 completed")
 		ctx.Set("async2_result", "data from async2")
 		return workflow.NewCompletedWorkReport()
 	})
 	
-	asyncAction3 := workflow.NewActionFunc("async3", func(ctx *workflow.WorkContext) workflow.WorkReport {
+	asyncAction3 := workflow.NewActionFunc("async3", func(ctx workflow.WorkContext) workflow.WorkReport {
 		time.Sleep(75 * time.Millisecond)
 		fmt.Println("⚡ Async action 3 completed")
 		ctx.Set("async3_result", "data from async3")
 		return workflow.NewCompletedWorkReport()
 	})
 	
-	combineAction := workflow.NewActionFunc("combine", func(ctx *workflow.WorkContext) workflow.WorkReport {
+	combineAction := workflow.NewActionFunc("combine", func(ctx workflow.WorkContext) workflow.WorkReport {
 		var results []string
 		for i := 1; i <= 3; i++ {
 			if result, ok := ctx.Get(fmt.Sprintf("async%d_result", i)); ok {

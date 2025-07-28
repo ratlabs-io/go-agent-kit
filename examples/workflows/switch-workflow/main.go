@@ -52,21 +52,21 @@ func main() {
 		WithClient(llmClient)
 	
 	// Create predicates for different sentiment categories
-	isPositive := func(ctx *workflow.WorkContext) (bool, error) {
+	isPositive := func(ctx workflow.WorkContext) (bool, error) {
 		if sentiment, ok := ctx.Get("previous_output"); ok {
 			return strings.Contains(strings.ToLower(fmt.Sprintf("%v", sentiment)), "positive"), nil
 		}
 		return false, nil
 	}
 	
-	isNegative := func(ctx *workflow.WorkContext) (bool, error) {
+	isNegative := func(ctx workflow.WorkContext) (bool, error) {
 		if sentiment, ok := ctx.Get("previous_output"); ok {
 			return strings.Contains(strings.ToLower(fmt.Sprintf("%v", sentiment)), "negative"), nil
 		}
 		return false, nil
 	}
 	
-	isUrgent := func(ctx *workflow.WorkContext) (bool, error) {
+	isUrgent := func(ctx workflow.WorkContext) (bool, error) {
 		if input, ok := ctx.Get("user_input"); ok {
 			inputStr := strings.ToLower(fmt.Sprintf("%v", input))
 			urgentWords := []string{"urgent", "emergency", "help", "asap", "immediately", "crisis"}
@@ -79,7 +79,7 @@ func main() {
 		return false, nil
 	}
 	
-	isNeutral := func(ctx *workflow.WorkContext) (bool, error) {
+	isNeutral := func(ctx workflow.WorkContext) (bool, error) {
 		if sentiment, ok := ctx.Get("previous_output"); ok {
 			return strings.Contains(strings.ToLower(fmt.Sprintf("%v", sentiment)), "neutral"), nil
 		}

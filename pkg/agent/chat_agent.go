@@ -11,12 +11,12 @@ import (
 
 // ChatAgent represents a simple agent that performs 1-hop LLM completions.
 // It implements the Agent interface and can be used as a node in workflows.
+// For tool-calling capabilities, use ToolAgent instead.
 type ChatAgent struct {
 	name      string
 	agentType AgentType
 	model     string
 	prompt    string
-	tools     []tools.Tool
 	client    llm.Client
 }
 
@@ -25,7 +25,6 @@ func NewChatAgent(name string) *ChatAgent {
 	return &ChatAgent{
 		name:      name,
 		agentType: TypeChat,
-		tools:     []tools.Tool{},
 	}
 }
 
@@ -40,8 +39,9 @@ func (ca *ChatAgent) Type() AgentType {
 }
 
 // Tools returns the list of tools available to this agent.
+// ChatAgent doesn't support tools - use ToolAgent for tool-calling capabilities.
 func (ca *ChatAgent) Tools() []tools.Tool {
-	return ca.tools
+	return nil
 }
 
 // Configure configures the ChatAgent with the provided settings.
@@ -68,9 +68,10 @@ func (ca *ChatAgent) WithPrompt(prompt string) *ChatAgent {
 	return ca
 }
 
-// WithTools adds tools to the ChatAgent.
+// WithTools is not supported by ChatAgent.
+// Use ToolAgent for tool-calling capabilities.
 func (ca *ChatAgent) WithTools(tools ...tools.Tool) *ChatAgent {
-	ca.tools = append(ca.tools, tools...)
+	// No-op: ChatAgent doesn't support tools
 	return ca
 }
 
@@ -81,7 +82,7 @@ func (ca *ChatAgent) WithClient(client llm.Client) *ChatAgent {
 }
 
 // Run executes the ChatAgent by performing a single LLM completion.
-func (ca *ChatAgent) Run(wctx *workflow.WorkContext) workflow.WorkReport {
+func (ca *ChatAgent) Run(wctx workflow.WorkContext) workflow.WorkReport {
 	startTime := time.Now()
 	logger := wctx.Logger().With("agent", "ChatAgent", "name", ca.name)
 	
@@ -90,15 +91,8 @@ func (ca *ChatAgent) Run(wctx *workflow.WorkContext) workflow.WorkReport {
 		return workflow.NewFailedWorkReport(fmt.Errorf("no LLM client configured for agent %s", ca.name))
 	}
 	
-	// Convert tools to LLM tool definitions
+	// ChatAgent doesn't support tools - use ToolAgent for tool-calling
 	var toolDefs []llm.ToolDefinition
-	for _, tool := range ca.tools {
-		toolDefs = append(toolDefs, llm.ToolDefinition{
-			Name:        tool.Name(),
-			Description: tool.Description(),
-			Parameters:  convertSchemaToMap(tool.Parameters()),
-		})
-	}
 	
 	// Build messages for the completion request
 	var messages []llm.Message
@@ -140,7 +134,7 @@ func (ca *ChatAgent) Run(wctx *workflow.WorkContext) workflow.WorkReport {
 	}
 	
 	// Perform the LLM completion
-	response, err := ca.client.Complete(wctx.Ctx, req)
+	response, err := ca.client.Complete(wctx.Context(), req)
 	if err != nil {
 		elapsed := time.Since(startTime)
 		logger.Error("LLM completion failed", "elapsed", elapsed, "error", err)
@@ -154,10 +148,10 @@ func (ca *ChatAgent) Run(wctx *workflow.WorkContext) workflow.WorkReport {
 	report := workflow.NewCompletedWorkReport()
 	report.Data = response
 	
-	// Emit event if we have an AgentContext with callbacks
-	// Check if this WorkContext is embedded in an AgentContext by looking at the context value
-	if ctxValue := wctx.Ctx.Value("agent_context"); ctxValue != nil {
-		if agentCtx, ok := ctxValue.(*workflow.AgentContext); ok {
+	// Emit event if WorkContext supports events
+	// Check if this WorkContext has event capabilities by looking at the context value
+	if ctxValue := wctx.Context().Value("work_context"); ctxValue != nil {
+		if workCtx, ok := ctxValue.(workflow.WorkContext); ok {
 			event := workflow.Event{
 				Type:      workflow.EventAgentCompleted,
 				Source:    ca.name,
@@ -168,7 +162,7 @@ func (ca *ChatAgent) Run(wctx *workflow.WorkContext) workflow.WorkReport {
 					"elapsed":    elapsed,
 				},
 			}
-			agentCtx.EmitEvent(event)
+			workCtx.EmitEvent(event)
 		}
 	}
 	
@@ -178,10 +172,10 @@ func (ca *ChatAgent) Run(wctx *workflow.WorkContext) workflow.WorkReport {
 	report.SetMetadata("elapsed", elapsed)
 	report.SetMetadata("token_usage", response.Usage)
 	
-	// Wait for callbacks to complete if we have an AgentContext
-	if ctxValue := wctx.Ctx.Value("agent_context"); ctxValue != nil {
-		if agentCtx, ok := ctxValue.(*workflow.AgentContext); ok {
-			agentCtx.Wait()
+	// Wait for callbacks to complete if WorkContext supports waiting
+	if ctxValue := wctx.Context().Value("work_context"); ctxValue != nil {
+		if workCtx, ok := ctxValue.(workflow.WorkContext); ok {
+			workCtx.Wait()
 		}
 	}
 	

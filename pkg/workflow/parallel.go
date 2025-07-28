@@ -37,7 +37,7 @@ func (pf *ParallelFlow) Execute(action Action) *ParallelFlow {
 // Run performs the actions in the ParallelFlow concurrently using the given work context.
 // It executes all actions simultaneously, waiting for all to complete before returning a combined report.
 // The work context provides synchronized data sharing and cancellation capabilities.
-func (pf *ParallelFlow) Run(wctx *WorkContext) WorkReport {
+func (pf *ParallelFlow) Run(wctx WorkContext) WorkReport {
 	var wg sync.WaitGroup
 	reports := make(chan WorkReport, len(pf.Actions))
 	logger := wctx.Logger().With("flow", "ParallelFlow", "name", pf.FlowName)
