@@ -6,20 +6,22 @@ import "fmt"
 // This allows for quick action creation without implementing the full Action interface.
 type ActionFunc struct {
 	name string
-	fn   func(*WorkContext)
+	fn   func(*WorkContext) WorkReport
 }
 
 // NewActionFunc creates a new ActionFunc with the given name and function.
-// The function should perform its work and doesn't need to return anything.
+// The function should perform its work and return a WorkReport.
 // If the function panics, it will be caught and turned into a failed report.
 // Example:
-//   action := workflow.NewActionFunc("process", func(ctx *workflow.WorkContext) {
+//   action := workflow.NewActionFunc("process", func(ctx *workflow.WorkContext) workflow.WorkReport {
 //       // Do something with the context
 //       if input, ok := ctx.Get("input"); ok {
 //           ctx.Set("output", process(input))
+//           return workflow.NewCompletedWorkReport()
 //       }
+//       return workflow.NewFailedWorkReport(fmt.Errorf("no input provided"))
 //   })
-func NewActionFunc(name string, fn func(*WorkContext)) *ActionFunc {
+func NewActionFunc(name string, fn func(*WorkContext) WorkReport) *ActionFunc {
 	return &ActionFunc{
 		name: name,
 		fn:   fn,
@@ -45,9 +47,6 @@ func (af *ActionFunc) Run(wctx *WorkContext) (report WorkReport) {
 		}
 	}()
 	
-	// Execute the function
-	af.fn(wctx)
-	
-	// Return success if no panic occurred
-	return NewCompletedWorkReport()
+	// Execute the function and return its report
+	return af.fn(wctx)
 }
