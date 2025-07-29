@@ -6,11 +6,13 @@ import (
 
 // CompletionRequest represents a request for LLM completion.
 type CompletionRequest struct {
-	Model    string                 `json:"model"`
-	Prompt   string                 `json:"prompt"`
-	Messages []Message              `json:"messages,omitempty"`
-	Tools    []ToolDefinition       `json:"tools,omitempty"`
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
+	Model        string                 `json:"model"`
+	Prompt       string                 `json:"prompt"`
+	Messages     []Message              `json:"messages,omitempty"`
+	Tools        []ToolDefinition       `json:"tools,omitempty"`
+	JSONSchema   *JSONSchema            `json:"json_schema,omitempty"`   // For structured JSON responses
+	ResponseType ResponseType           `json:"response_type,omitempty"` // text, json_object, json_schema
+	Metadata     map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // Message represents a chat message.
@@ -47,6 +49,23 @@ type Usage struct {
 	PromptTokens     int `json:"prompt_tokens"`
 	CompletionTokens int `json:"completion_tokens"`
 	TotalTokens      int `json:"total_tokens"`
+}
+
+// ResponseType defines the type of response expected from the LLM.
+type ResponseType string
+
+const (
+	ResponseTypeText       ResponseType = "text"        // Default text response
+	ResponseTypeJSONObject ResponseType = "json_object" // Valid JSON object
+	ResponseTypeJSONSchema ResponseType = "json_schema" // JSON following specific schema
+)
+
+// JSONSchema represents a JSON schema for structured responses.
+type JSONSchema struct {
+	Name        string                 `json:"name"`        // Name of the schema
+	Description string                 `json:"description"` // Description of what the schema represents
+	Schema      map[string]interface{} `json:"schema"`      // The JSON schema definition
+	Strict      bool                   `json:"strict"`      // Whether to enforce strict adherence to schema
 }
 
 // Client defines the interface for LLM interactions.

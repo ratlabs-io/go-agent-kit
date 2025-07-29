@@ -13,11 +13,13 @@ import (
 // It implements the Agent interface and can be used as a node in workflows.
 // For tool-calling capabilities, use ToolAgent instead.
 type ChatAgent struct {
-	name      string
-	agentType AgentType
-	model     string
-	prompt    string
-	client    llm.Client
+	name         string
+	agentType    AgentType
+	model        string
+	prompt       string
+	client       llm.Client
+	jsonSchema   *llm.JSONSchema
+	responseType llm.ResponseType
 }
 
 // NewChatAgent creates a new ChatAgent with the given name.
@@ -52,6 +54,9 @@ func (ca *ChatAgent) Configure(config map[string]interface{}) error {
 	if prompt, ok := config["prompt"].(string); ok {
 		ca.prompt = prompt
 	}
+	if responseType, ok := config["response_type"].(string); ok {
+		ca.responseType = llm.ResponseType(responseType)
+	}
 	// Note: LLM client must be provided via WithClient() - no default implementation
 	return nil
 }
@@ -78,6 +83,26 @@ func (ca *ChatAgent) WithTools(tools ...tools.Tool) *ChatAgent {
 // WithClient sets the LLM client for the ChatAgent.
 func (ca *ChatAgent) WithClient(client llm.Client) *ChatAgent {
 	ca.client = client
+	return ca
+}
+
+// WithJSONSchema sets the JSON schema for structured responses.
+func (ca *ChatAgent) WithJSONSchema(schema *llm.JSONSchema) *ChatAgent {
+	ca.jsonSchema = schema
+	ca.responseType = llm.ResponseTypeJSONSchema
+	return ca
+}
+
+// WithJSONResponse enables JSON object responses (no specific schema).
+func (ca *ChatAgent) WithJSONResponse() *ChatAgent {
+	ca.responseType = llm.ResponseTypeJSONObject
+	ca.jsonSchema = nil
+	return ca
+}
+
+// WithResponseType sets the response type for the agent.
+func (ca *ChatAgent) WithResponseType(responseType llm.ResponseType) *ChatAgent {
+	ca.responseType = responseType
 	return ca
 }
 
@@ -123,10 +148,12 @@ func (ca *ChatAgent) Run(wctx workflow.WorkContext) workflow.WorkReport {
 	
 	// Prepare the completion request
 	req := llm.CompletionRequest{
-		Model:    ca.model,
-		Prompt:   prompt,
-		Messages: messages,
-		Tools:    toolDefs,
+		Model:        ca.model,
+		Prompt:       prompt,
+		Messages:     messages,
+		Tools:        toolDefs,
+		JSONSchema:   ca.jsonSchema,
+		ResponseType: ca.responseType,
 		Metadata: map[string]interface{}{
 			"agent_name": ca.name,
 			"agent_type": ca.agentType,

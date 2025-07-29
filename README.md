@@ -11,6 +11,7 @@ A lightweight, composable framework for building agent workflows in Go. Go Agent
 - **🔧 Zero Dependencies**: Core library has no external dependencies  
 - **🤖 Bring Your Own LLM**: Generic interface supports any LLM provider
 - **🛠️ Flexible Tool System**: Simple native tools with full schema control
+- **📋 Structured JSON Responses**: Support for JSON schemas and type-safe outputs
 - **⚡ Composable Workflows**: Sequential, parallel, conditional, and switch execution patterns
 - **📦 Production Ready**: Clean architecture, comprehensive error handling, and structured logging
 - **🔄 Event System**: Callback-based monitoring and metrics collection
@@ -110,6 +111,78 @@ toolAgent := agent.NewToolAgent("calculator").
 ctx := workflow.NewWorkContext(context.Background())
 ctx.Set("user_input", "Calculate 15 * 23 and echo the result")
 report := toolAgent.Run(ctx)
+```
+
+### Structured JSON Responses
+
+Get predictable, parseable responses with JSON schemas:
+
+```go
+import "encoding/json"
+
+// Define a JSON schema for structured output
+schema := &llm.JSONSchema{
+    Name: "task_analysis",
+    Description: "Analysis of a user task",
+    Schema: map[string]interface{}{
+        "type": "object",
+        "properties": map[string]interface{}{
+            "category": map[string]interface{}{
+                "type": "string",
+                "enum": []string{"question", "request", "task", "other"},
+            },
+            "complexity": map[string]interface{}{
+                "type": "string",
+                "enum": []string{"low", "medium", "high"},
+            },
+            "estimated_time": map[string]interface{}{
+                "type": "integer",
+                "description": "Estimated time in minutes",
+            },
+            "requirements": map[string]interface{}{
+                "type": "array",
+                "items": map[string]interface{}{"type": "string"},
+            },
+        },
+        "required": []string{"category", "complexity", "estimated_time"},
+        "additionalProperties": false,
+    },
+    Strict: true,
+}
+
+// Create agent with JSON schema
+// Note: Use gpt-4o-mini or gpt-4o for JSON schema support
+jsonAgent := agent.NewChatAgent("analyzer").
+    WithModel("gpt-4o-mini").
+    WithPrompt("Analyze the user's input and provide structured analysis.").
+    WithJSONSchema(schema).
+    WithClient(llmClient)
+
+ctx := workflow.NewWorkContext(context.Background())
+ctx.Set("user_input", "Help me plan a vacation to Japan")
+report := jsonAgent.Run(ctx)
+
+// Response will be valid JSON matching the schema
+if report.Status == workflow.StatusCompleted {
+    if response, ok := report.Data.(*llm.CompletionResponse); ok {
+        // Parse JSON response
+        var analysis map[string]interface{}
+        json.Unmarshal([]byte(response.Content), &analysis)
+        fmt.Printf("Category: %s\n", analysis["category"])
+        fmt.Printf("Complexity: %s\n", analysis["complexity"])
+    }
+}
+```
+
+You can also request generic JSON objects without a specific schema:
+
+```go
+// Request JSON without specific schema
+jsonAgent := agent.NewChatAgent("json-responder").
+    WithModel("gpt-4").
+    WithPrompt("Respond with a JSON object containing key insights.").
+    WithJSONResponse().
+    WithClient(llmClient)
 ```
 
 ## 🔄 Workflow Patterns
@@ -328,6 +401,7 @@ Explore comprehensive examples in [`examples/workflows/`](./examples/workflows/)
 
 - **[simple-agent](./examples/workflows/simple-agent/)**: Basic chat completion
 - **[simple-agent-with-callbacks](./examples/workflows/simple-agent-with-callbacks/)**: Event monitoring
+- **[structured-json-agent](./examples/workflows/structured-json-agent/)**: JSON schema responses
 - **[sequential-workflow](./examples/workflows/sequential-workflow/)**: Multi-step processing  
 - **[chaining-patterns](./examples/workflows/chaining-patterns/)**: Different sequential chaining strategies
 - **[parallel-workflow](./examples/workflows/parallel-workflow/)**: Concurrent execution
@@ -344,6 +418,7 @@ export OPENAI_API_KEY=your-actual-api-key-here
 
 # Run any example
 go run examples/workflows/simple-agent/main.go
+go run examples/workflows/structured-json-agent/main.go
 go run examples/workflows/sequential-workflow/main.go
 go run examples/workflows/tool-agent/main.go
 ```

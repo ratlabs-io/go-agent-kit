@@ -104,6 +104,23 @@ func (c *Client) convertRequest(req llm.CompletionRequest) openAIRequest {
 		}
 	}
 	
+	// Handle JSON response requests
+	if req.ResponseType == llm.ResponseTypeJSONObject {
+		openAIReq.ResponseFormat = &openAIResponseFormat{
+			Type: "json_object",
+		}
+	} else if req.ResponseType == llm.ResponseTypeJSONSchema && req.JSONSchema != nil {
+		openAIReq.ResponseFormat = &openAIResponseFormat{
+			Type: "json_schema",
+			JSONSchema: &openAIJSONSchema{
+				Name:        req.JSONSchema.Name,
+				Description: req.JSONSchema.Description,
+				Schema:      req.JSONSchema.Schema,
+				Strict:      req.JSONSchema.Strict,
+			},
+		}
+	}
+	
 	// Convert tools if provided
 	if len(req.Tools) > 0 {
 		for _, tool := range req.Tools {
@@ -158,11 +175,12 @@ func (c *Client) convertResponse(resp openAIResponse) *llm.CompletionResponse {
 
 // OpenAI API types (simplified)
 type openAIRequest struct {
-	Model       string          `json:"model"`
-	Messages    []openAIMessage `json:"messages"`
-	Tools       []openAITool    `json:"tools,omitempty"`
-	ToolChoice  string          `json:"tool_choice,omitempty"`
-	Temperature float64         `json:"temperature"`
+	Model          string                 `json:"model"`
+	Messages       []openAIMessage        `json:"messages"`
+	Tools          []openAITool           `json:"tools,omitempty"`
+	ToolChoice     string                 `json:"tool_choice,omitempty"`
+	Temperature    float64                `json:"temperature"`
+	ResponseFormat *openAIResponseFormat  `json:"response_format,omitempty"`
 }
 
 type openAIMessage struct {
@@ -206,4 +224,16 @@ type openAIUsage struct {
 	PromptTokens     int `json:"prompt_tokens"`
 	CompletionTokens int `json:"completion_tokens"`
 	TotalTokens      int `json:"total_tokens"`
+}
+
+type openAIResponseFormat struct {
+	Type       string              `json:"type"` // "text", "json_object", "json_schema"
+	JSONSchema *openAIJSONSchema   `json:"json_schema,omitempty"`
+}
+
+type openAIJSONSchema struct {
+	Name        string                 `json:"name"`
+	Description string                 `json:"description,omitempty"`
+	Schema      map[string]interface{} `json:"schema"`
+	Strict      bool                   `json:"strict"`
 }

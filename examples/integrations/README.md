@@ -7,6 +7,7 @@ This directory contains example implementations of the `llm.Client` interface fo
 ### OpenAI (`./openai/`)
 - Pure Go implementation using OpenAI's HTTP API
 - Supports chat completions and tool calling
+- **NEW**: Supports JSON response formats (json_object and json_schema)
 - Zero dependencies beyond Go stdlib
 - Works with OpenAI, Azure OpenAI, and compatible APIs
 
@@ -65,6 +66,13 @@ type MyClient struct {
 }
 
 func (c *MyClient) Complete(ctx context.Context, req llm.CompletionRequest) (*llm.CompletionResponse, error) {
+    // Check for JSON response requests
+    if req.ResponseType == llm.ResponseTypeJSONObject {
+        // Handle JSON object response
+    } else if req.ResponseType == llm.ResponseTypeJSONSchema && req.JSONSchema != nil {
+        // Handle structured JSON schema response
+    }
+    
     // your implementation
 }
 

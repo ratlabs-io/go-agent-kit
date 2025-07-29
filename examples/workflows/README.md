@@ -8,6 +8,7 @@ This directory contains practical examples demonstrating how to use the go-agent
 **Basic single agent workflow**
 - Shows how to create and run a single chat agent
 - Demonstrates basic agent configuration (model, prompt, LLM client)
+- **NEW**: Includes JSON response formatting examples
 - Good starting point for understanding the library
 
 ### 2. `simple-agent-with-callbacks/`
@@ -16,58 +17,77 @@ This directory contains practical examples demonstrating how to use the go-agent
 - Shows how to monitor agent execution with callbacks
 - Demonstrates the callback system and event handling
 
-### 3. `sequential-workflow/`
+### 3. `structured-json-agent/`
+**Structured JSON responses with schemas**
+- Comprehensive JSON schema response examples
+- Shows both strict schema and generic JSON responses
+- Multi-step workflows with structured data flow
+- Demonstrates type-safe parsing and validation
+
+### 4. `sequential-workflow/`
 **Sequential multi-agent workflow**
 - Multiple agents running one after another
 - Shows how to chain agent outputs with `ThenChain()`
 - Demonstrates `SequentialFlow` usage
 
-### 4. `chaining-patterns/`
+### 5. `chaining-patterns/`
 **Different sequential chaining strategies**
 - Compares `ThenChain()` vs `ThenAccumulate()` patterns
 - Shows how data flows through agent chains
 - Pipeline vs collaborative processing approaches
 
-### 5. `parallel-workflow/`
+### 6. `parallel-workflow/`
 **Parallel multi-agent workflow**
 - Multiple agents running simultaneously
 - Shows how to combine parallel execution results
 - Demonstrates `ParallelFlow` usage
 
-### 5. `conditional-workflow/`
+### 7. `conditional-workflow/`
 **Conditional workflow execution**
 - Shows how to implement branching logic
 - Demonstrates `ConditionalFlow` and custom predicates
 - Routing based on agent output classification
 
-### 6. `switch-workflow/`
+### 8. `switch-workflow/`
 **Switch-based workflow routing**
 - Multiple condition evaluation with priority ordering
 - Shows sentiment-based routing with urgency override
 - Demonstrates `SwitchFlow` builder pattern with default fallback
 
-### 7. `action-func/`
+### 9. `action-func/`
 **Simple action creation with ActionFunc**
 - Shows how to create actions without boilerplate
 - Demonstrates text processing pipeline with validation
 - Perfect for quick prototyping and simple transformations
 
-### 8. `tool-agent/`
+### 10. `tool-agent/`
 **Tool-enabled agent workflow**
 - Shows how to create agents that can use tools
 - Demonstrates tool registration and execution
 - Examples of math, echo, and simple tools
 
+### 11. `custom-logging/`
+**Flexible logging configuration**
+- Default logging behavior (stderr, Info level)
+- Disabling all logging with NoOpLogger
+- Custom global logger configuration
+- Per-context logger settings
+
 ## Key Concepts Demonstrated
 
 ### Agent Types
-- **ChatAgent**: Simple 1-hop LLM completions (text-only)
-- **ToolAgent**: Multi-step execution with tool calling capabilities
+- **ChatAgent**: Simple 1-hop LLM completions with text or JSON responses
+- **ToolAgent**: Multi-step execution with tool calling capabilities and JSON support
 
 ### Workflow Types  
 - **SequentialFlow**: Execute actions one after another
 - **ParallelFlow**: Execute actions simultaneously
 - **ConditionalFlow**: Execute based on predicate conditions
+
+### Response Types
+- **Text Responses**: Traditional unstructured text output
+- **JSON Objects**: Generic JSON responses for flexible data structures
+- **JSON Schema**: Strict schema validation for predictable, type-safe outputs
 
 ### Tool Integration
 - **Native Tools**: Implement `Tool` interface with full schema control
@@ -93,6 +113,7 @@ export OPENAI_API_KEY=your-actual-api-key-here
 # Run any example directly
 go run examples/workflows/simple-agent/main.go
 go run examples/workflows/simple-agent-with-callbacks/main.go
+go run examples/workflows/structured-json-agent/main.go
 go run examples/workflows/sequential-workflow/main.go
 go run examples/workflows/chaining-patterns/main.go
 go run examples/workflows/parallel-workflow/main.go
@@ -100,6 +121,7 @@ go run examples/workflows/conditional-workflow/main.go
 go run examples/workflows/switch-workflow/main.go
 go run examples/workflows/tool-agent/main.go
 go run examples/workflows/action-func/main.go
+go run examples/workflows/custom-logging/main.go
 ```
 
 **Note**: If the `OPENAI_API_KEY` environment variable is not set, the examples will show an error message and exit gracefully.

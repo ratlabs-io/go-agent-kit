@@ -22,6 +22,8 @@ type ToolAgent struct {
 	client       llm.Client
 	toolFlow     workflow.Action // Internal workflow for complex tool execution
 	maxToolCalls int            // Maximum number of tool calls per execution
+	jsonSchema   *llm.JSONSchema
+	responseType llm.ResponseType
 	log          *slog.Logger
 }
 
@@ -62,6 +64,9 @@ func (ta *ToolAgent) Configure(config map[string]interface{}) error {
 	if maxCalls, ok := config["max_tool_calls"].(int); ok {
 		ta.maxToolCalls = maxCalls
 	}
+	if responseType, ok := config["response_type"].(string); ok {
+		ta.responseType = llm.ResponseType(responseType)
+	}
 	// Note: LLM client must be provided via WithClient() - no default implementation
 	return nil
 }
@@ -99,6 +104,26 @@ func (ta *ToolAgent) WithToolFlow(flow workflow.Action) *ToolAgent {
 // WithMaxToolCalls sets the maximum number of tool calls per execution.
 func (ta *ToolAgent) WithMaxToolCalls(max int) *ToolAgent {
 	ta.maxToolCalls = max
+	return ta
+}
+
+// WithJSONSchema sets the JSON schema for structured responses.
+func (ta *ToolAgent) WithJSONSchema(schema *llm.JSONSchema) *ToolAgent {
+	ta.jsonSchema = schema
+	ta.responseType = llm.ResponseTypeJSONSchema
+	return ta
+}
+
+// WithJSONResponse enables JSON object responses (no specific schema).
+func (ta *ToolAgent) WithJSONResponse() *ToolAgent {
+	ta.responseType = llm.ResponseTypeJSONObject
+	ta.jsonSchema = nil
+	return ta
+}
+
+// WithResponseType sets the response type for the agent.
+func (ta *ToolAgent) WithResponseType(responseType llm.ResponseType) *ToolAgent {
+	ta.responseType = responseType
 	return ta
 }
 
@@ -198,10 +223,12 @@ func (ta *ToolAgent) executeSimpleToolCalling(wctx workflow.WorkContext, startTi
 	
 	// Prepare the completion request
 	req := llm.CompletionRequest{
-		Model:    ta.model,
-		Prompt:   prompt,
-		Messages: messages,
-		Tools:    toolDefs,
+		Model:        ta.model,
+		Prompt:       prompt,
+		Messages:     messages,
+		Tools:        toolDefs,
+		JSONSchema:   ta.jsonSchema,
+		ResponseType: ta.responseType,
 		Metadata: map[string]interface{}{
 			"agent_name": ta.name,
 			"agent_type": ta.agentType,
