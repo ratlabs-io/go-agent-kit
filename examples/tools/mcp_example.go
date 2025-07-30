@@ -16,13 +16,13 @@ func MCPExample() {
 		URL:    "http://localhost:8080/mcp",
 		APIKey: "your-api-key-here", // optional
 	}
-	
+
 	// Create MCP client
 	mcpClient := tools.NewMCPClient(server)
-	
+
 	// Create tool registry
 	registry := tools.NewDefaultToolRegistry()
-	
+
 	// Fetch and register tools from MCP server
 	ctx := context.Background()
 	mcpTools, err := mcpClient.ListTools(ctx)
@@ -30,7 +30,7 @@ func MCPExample() {
 		fmt.Printf("Failed to list MCP tools: %v\n", err)
 		return
 	}
-	
+
 	// Register all MCP tools
 	for _, tool := range mcpTools {
 		if err := registry.Register(tool); err != nil {
@@ -39,7 +39,7 @@ func MCPExample() {
 		}
 		fmt.Printf("Registered MCP tool: %s\n", tool.Name())
 	}
-	
+
 	// Now the MCP tools can be used by agents just like native tools
 	fmt.Printf("Successfully registered %d MCP tools\n", len(mcpTools))
 }
@@ -49,29 +49,29 @@ func MCPExample() {
 func MCPRegistry(servers []*tools.MCPServer) (*tools.DefaultToolRegistry, error) {
 	registry := tools.NewDefaultToolRegistry()
 	ctx := context.Background()
-	
+
 	for _, server := range servers {
 		mcpClient := tools.NewMCPClient(server)
-		
+
 		tools, err := mcpClient.ListTools(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list tools from server %s: %w", server.Name, err)
 		}
-		
+
 		for _, tool := range tools {
 			// Prefix tool names with server name to avoid conflicts
 			prefixedTool := &MCPToolProxy{
 				tool:       tool,
 				namePrefix: server.Name + ".",
 			}
-			
+
 			if err := registry.Register(prefixedTool); err != nil {
-				return nil, fmt.Errorf("failed to register tool %s from %s: %w", 
+				return nil, fmt.Errorf("failed to register tool %s from %s: %w",
 					tool.Name(), server.Name, err)
 			}
 		}
 	}
-	
+
 	return registry, nil
 }
 

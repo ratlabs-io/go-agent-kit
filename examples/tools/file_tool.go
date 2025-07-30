@@ -59,7 +59,7 @@ func (ft *FileTool) Parameters() tools.Schema {
 	if !ft.readOnly {
 		operations = append(operations, "write", "delete", "mkdir")
 	}
-	
+
 	return tools.Schema{
 		Type:        "object",
 		Description: "Parameters for file system operations",
@@ -94,23 +94,23 @@ func (ft *FileTool) Execute(ctx context.Context, params map[string]interface{}) 
 	if !ok {
 		return nil, fmt.Errorf("operation parameter is required and must be a string")
 	}
-	
+
 	// Extract path
 	path, ok := params["path"].(string)
 	if !ok {
 		return nil, fmt.Errorf("path parameter is required and must be a string")
 	}
-	
+
 	// Validate path access
 	if err := ft.validatePath(path); err != nil {
 		return nil, err
 	}
-	
+
 	// Check read-only restrictions
 	if ft.readOnly && !isReadOperation(operation) {
 		return nil, fmt.Errorf("write operations not allowed in read-only mode")
 	}
-	
+
 	switch operation {
 	case "read":
 		return ft.readFile(path)
@@ -135,23 +135,23 @@ func (ft *FileTool) validatePath(path string) error {
 	if len(ft.allowedPaths) == 0 {
 		return nil // No restrictions
 	}
-	
+
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return fmt.Errorf("failed to resolve absolute path: %w", err)
 	}
-	
+
 	for _, allowedPath := range ft.allowedPaths {
 		absAllowedPath, err := filepath.Abs(allowedPath)
 		if err != nil {
 			continue
 		}
-		
+
 		if strings.HasPrefix(absPath, absAllowedPath) {
 			return nil
 		}
 	}
-	
+
 	return fmt.Errorf("path %s is not allowed", path)
 }
 
@@ -170,12 +170,12 @@ func (ft *FileTool) readFile(path string) (interface{}, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file %s: %w", path, err)
 	}
-	
+
 	info, err := os.Stat(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get file info: %w", err)
 	}
-	
+
 	return map[string]interface{}{
 		"path":     path,
 		"content":  string(content),
@@ -192,17 +192,17 @@ func (ft *FileTool) writeFile(path, content string) (interface{}, error) {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create directory %s: %w", dir, err)
 	}
-	
+
 	err := os.WriteFile(path, []byte(content), 0644)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write file %s: %w", path, err)
 	}
-	
+
 	info, err := os.Stat(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get file info after write: %w", err)
 	}
-	
+
 	return map[string]interface{}{
 		"path":     path,
 		"size":     info.Size(),
@@ -217,28 +217,28 @@ func (ft *FileTool) listDirectory(path string, recursive bool) (interface{}, err
 	if err != nil {
 		return nil, fmt.Errorf("failed to stat path %s: %w", path, err)
 	}
-	
+
 	if !info.IsDir() {
 		return nil, fmt.Errorf("path %s is not a directory", path)
 	}
-	
+
 	var files []map[string]interface{}
-	
+
 	if recursive {
 		err = filepath.Walk(path, func(filePath string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
-			
+
 			files = append(files, map[string]interface{}{
-				"path":      filePath,
-				"name":      info.Name(),
-				"size":      info.Size(),
-				"modified":  info.ModTime(),
-				"is_dir":    info.IsDir(),
-				"mode":      info.Mode().String(),
+				"path":     filePath,
+				"name":     info.Name(),
+				"size":     info.Size(),
+				"modified": info.ModTime(),
+				"is_dir":   info.IsDir(),
+				"mode":     info.Mode().String(),
 			})
-			
+
 			return nil
 		})
 	} else {
@@ -246,13 +246,13 @@ func (ft *FileTool) listDirectory(path string, recursive bool) (interface{}, err
 		if err != nil {
 			return nil, fmt.Errorf("failed to read directory %s: %w", path, err)
 		}
-		
+
 		for _, entry := range entries {
 			info, err := entry.Info()
 			if err != nil {
 				continue
 			}
-			
+
 			files = append(files, map[string]interface{}{
 				"path":     filepath.Join(path, entry.Name()),
 				"name":     entry.Name(),
@@ -263,11 +263,11 @@ func (ft *FileTool) listDirectory(path string, recursive bool) (interface{}, err
 			})
 		}
 	}
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to list directory %s: %w", path, err)
 	}
-	
+
 	return map[string]interface{}{
 		"path":      path,
 		"files":     files,
@@ -282,12 +282,12 @@ func (ft *FileTool) deleteFile(path string) (interface{}, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to stat path %s: %w", path, err)
 	}
-	
+
 	err = os.RemoveAll(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to delete %s: %w", path, err)
 	}
-	
+
 	return map[string]interface{}{
 		"path":    path,
 		"was_dir": info.IsDir(),
@@ -303,11 +303,11 @@ func (ft *FileTool) makeDirectory(path string, recursive bool) (interface{}, err
 	} else {
 		err = os.Mkdir(path, 0755)
 	}
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create directory %s: %w", path, err)
 	}
-	
+
 	return map[string]interface{}{
 		"path":      path,
 		"recursive": recursive,

@@ -24,7 +24,7 @@ type Retry struct {
 	name        string
 	action      Action
 	maxAttempts int
-	
+
 	// Retry configuration
 	backoffStrategy BackoffStrategy
 	retryCondition  RetryConditionFunc
@@ -34,8 +34,8 @@ type Retry struct {
 // NewRetry creates a basic retry construct with a maximum number of attempts.
 func NewRetry(name string, maxAttempts int) *Retry {
 	return &Retry{
-		name:        name,
-		maxAttempts: maxAttempts,
+		name:            name,
+		maxAttempts:     maxAttempts,
 		backoffStrategy: &FixedBackoff{delay: time.Second},
 		retryCondition:  DefaultRetryCondition,
 	}
@@ -80,13 +80,13 @@ func (r *Retry) Run(wctx WorkContext) WorkReport {
 	logger.Debug("Starting retry", "type", constants.FlowTypeRetry, "name", r.name, "max_attempts", r.maxAttempts)
 
 	var lastReport WorkReport
-	
+
 	for attempt := 0; attempt < r.maxAttempts; attempt++ {
 		logger.Debug("Retry attempt", "name", r.name, "attempt", attempt+1, "max_attempts", r.maxAttempts)
-		
+
 		// Execute the action
 		report := r.action.Run(wctx)
-		
+
 		// Success case
 		if report.Status == StatusCompleted {
 			if attempt > 0 {
@@ -94,9 +94,9 @@ func (r *Retry) Run(wctx WorkContext) WorkReport {
 			}
 			return report
 		}
-		
+
 		lastReport = report
-		
+
 		// Check if we should retry based on error condition
 		shouldRetry := false
 		if len(report.Errors) > 0 {
@@ -110,19 +110,19 @@ func (r *Retry) Run(wctx WorkContext) WorkReport {
 			// If no specific errors but status is failure, use default retry logic
 			shouldRetry = true
 		}
-		
+
 		// Check stop condition
 		if r.stopCondition != nil && r.stopCondition(wctx) {
 			logger.Debug("Retry stop condition met, aborting", "name", r.name)
 			break
 		}
-		
+
 		// Don't retry if condition says no
 		if !shouldRetry {
 			logger.Debug("Retry condition not met, aborting", "name", r.name)
 			break
 		}
-		
+
 		// Don't sleep after the last attempt
 		if attempt < r.maxAttempts-1 {
 			delay := r.backoffStrategy.CalculateDelay(attempt)
@@ -130,16 +130,16 @@ func (r *Retry) Run(wctx WorkContext) WorkReport {
 			time.Sleep(delay)
 		}
 	}
-	
+
 	logger.Error("Retry all attempts failed", "name", r.name)
-	
+
 	// Add retry information to the final report
 	if lastReport.Metadata == nil {
 		lastReport.Metadata = make(map[string]interface{})
 	}
 	lastReport.Metadata["retry_attempts"] = r.maxAttempts
 	lastReport.Metadata["retry_name"] = r.name
-	
+
 	return lastReport
 }
 
@@ -221,16 +221,16 @@ func RetryOnTimeoutCondition(err error) bool {
 	if err == nil {
 		return false
 	}
-	
+
 	errStr := err.Error()
 	timeoutKeywords := []string{"timeout", "deadline", "context canceled", "context deadline exceeded"}
-	
+
 	for _, keyword := range timeoutKeywords {
 		if contains(errStr, keyword) {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -239,16 +239,16 @@ func RetryOnRateLimitCondition(err error) bool {
 	if err == nil {
 		return false
 	}
-	
+
 	errStr := err.Error()
 	rateLimitKeywords := []string{"rate limit", "too many requests", "429", "quota exceeded"}
-	
+
 	for _, keyword := range rateLimitKeywords {
 		if contains(errStr, keyword) {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -257,19 +257,19 @@ func RetryOnNetworkCondition(err error) bool {
 	if err == nil {
 		return false
 	}
-	
+
 	errStr := err.Error()
 	networkKeywords := []string{
 		"connection refused", "connection reset", "network unreachable",
 		"no such host", "dns", "timeout", "i/o timeout",
 	}
-	
+
 	for _, keyword := range networkKeywords {
 		if contains(errStr, keyword) {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -287,10 +287,10 @@ func CombineRetryConditions(conditions ...RetryConditionFunc) RetryConditionFunc
 
 // Helper function to check if a string contains a substring (case-insensitive).
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || 
-		len(s) > len(substr) && (s[:len(substr)] == substr || 
-		s[len(s)-len(substr):] == substr || 
-		findInString(s, substr)))
+	return len(s) >= len(substr) && (s == substr ||
+		len(s) > len(substr) && (s[:len(substr)] == substr ||
+			s[len(s)-len(substr):] == substr ||
+			findInString(s, substr)))
 }
 
 func findInString(s, substr string) bool {

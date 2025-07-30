@@ -23,7 +23,7 @@ type ToolAgent struct {
 	tools        []tools.Tool
 	client       llm.Client
 	toolFlow     workflow.Action // Internal workflow for complex tool execution
-	maxToolCalls int            // Maximum number of tool calls per execution
+	maxToolCalls int             // Maximum number of tool calls per execution
 	jsonSchema   *llm.JSONSchema
 	responseType llm.ResponseType
 	log          *slog.Logger
@@ -129,22 +129,21 @@ func (ta *ToolAgent) WithResponseType(responseType llm.ResponseType) *ToolAgent 
 	return ta
 }
 
-
 // Run executes the ToolAgent, potentially using tools and internal workflows.
 func (ta *ToolAgent) Run(wctx workflow.WorkContext) workflow.WorkReport {
 	startTime := time.Now()
-	
+
 	if ta.client == nil {
 		ta.log.Error("no LLM client configured")
 		return workflow.NewFailedWorkReport(fmt.Errorf("no LLM client configured for agent %s", ta.name))
 	}
-	
+
 	// If we have an internal tool flow, use it for complex execution
 	if ta.toolFlow != nil {
 		ta.log.Info("executing internal tool flow", "flow", ta.toolFlow.Name())
 		return ta.executeWithToolFlow(wctx, startTime)
 	}
-	
+
 	// Otherwise, perform simple tool-calling execution
 	return ta.executeSimpleToolCalling(wctx, startTime)
 }
@@ -156,11 +155,11 @@ func (ta *ToolAgent) executeWithToolFlow(wctx workflow.WorkContext, startTime ti
 	wctx.Set("available_tools", ta.tools)
 	wctx.Set("llm_client", ta.client)
 	wctx.Set("prompt", ta.prompt)
-	
+
 	// Execute the internal workflow
 	flowReport := ta.toolFlow.Run(wctx)
 	elapsed := time.Since(startTime)
-	
+
 	// Enhance the report with agent metadata
 	if flowReport.Metadata == nil {
 		flowReport.Metadata = make(map[string]interface{})
@@ -169,9 +168,9 @@ func (ta *ToolAgent) executeWithToolFlow(wctx workflow.WorkContext, startTime ti
 	flowReport.SetMetadata("agent_type", ta.agentType)
 	flowReport.SetMetadata("elapsed", elapsed)
 	flowReport.SetMetadata("execution_type", "tool_flow")
-	
+
 	// Note: Event emission is now available through WorkContext interface
-	
+
 	ta.log.Info("tool flow execution completed", "status", flowReport.Status, "elapsed", elapsed)
 	return flowReport
 }
@@ -187,10 +186,10 @@ func (ta *ToolAgent) executeSimpleToolCalling(wctx workflow.WorkContext, startTi
 			Parameters:  convertSchemaToMap(tool.Parameters()),
 		})
 	}
-	
+
 	// Build initial messages for the conversation
 	var messages []llm.Message
-	
+
 	// Check for runtime message history in context
 	var messageHistory []llm.Message
 	if runtimeHistory, ok := wctx.Get(constants.KeyMessageHistory); ok {
@@ -198,12 +197,12 @@ func (ta *ToolAgent) executeSimpleToolCalling(wctx workflow.WorkContext, startTi
 			messageHistory = historySlice
 		}
 	}
-	
+
 	// Add message history first
 	if len(messageHistory) > 0 {
 		messages = append(messages, messageHistory...)
 	}
-	
+
 	// Add system prompt if provided (only if not already in history)
 	if ta.prompt != "" {
 		// Check if system prompt already exists in history
@@ -221,7 +220,7 @@ func (ta *ToolAgent) executeSimpleToolCalling(wctx workflow.WorkContext, startTi
 			})
 		}
 	}
-	
+
 	// Check for user input in context
 	userInput := ""
 	if input, ok := wctx.Get(constants.KeyUserInput); ok {
@@ -229,25 +228,25 @@ func (ta *ToolAgent) executeSimpleToolCalling(wctx workflow.WorkContext, startTi
 			userInput = inputStr
 		}
 	}
-	
+
 	if userInput != "" {
 		messages = append(messages, llm.Message{
 			Role:    constants.RoleUser,
 			Content: userInput,
 		})
 	}
-	
+
 	// If no messages were built, fall back to prompt-only mode
 	var prompt string
 	if len(messages) == 0 && ta.prompt != "" {
 		prompt = ta.prompt
 	}
-	
+
 	// Start the tool calling loop
 	var finalResponse *llm.CompletionResponse
 	var totalTokens int
 	toolCallCount := 0
-	
+
 	for i := 0; i < ta.maxToolCalls; i++ {
 		// Prepare the completion request
 		req := llm.CompletionRequest{
@@ -258,12 +257,12 @@ func (ta *ToolAgent) executeSimpleToolCalling(wctx workflow.WorkContext, startTi
 			JSONSchema:   ta.jsonSchema,
 			ResponseType: ta.responseType,
 			Metadata: map[string]interface{}{
-				"agent_name": ta.name,
-				"agent_type": ta.agentType,
+				"agent_name":     ta.name,
+				"agent_type":     ta.agentType,
 				"loop_iteration": i + 1,
 			},
 		}
-		
+
 		// Make LLM completion call
 		response, err := ta.client.Complete(wctx.Context(), req)
 		if err != nil {
@@ -271,26 +270,26 @@ func (ta *ToolAgent) executeSimpleToolCalling(wctx workflow.WorkContext, startTi
 			ta.log.Error("LLM completion failed", "iteration", i+1, "elapsed", elapsed, "error", err)
 			return workflow.NewFailedWorkReport(fmt.Errorf("LLM completion failed on iteration %d: %w", i+1, err))
 		}
-		
+
 		totalTokens += response.Usage.TotalTokens
 		finalResponse = response
-		
+
 		// If no tool calls, we're done
 		if len(response.ToolCalls) == 0 {
 			ta.log.Info("tool calling loop completed - no more tools requested", "iterations", i+1, "total_tokens", totalTokens)
 			break
 		}
-		
+
 		// Add assistant message with tool calls to conversation
 		messages = append(messages, llm.Message{
 			Role:    constants.RoleAssistant,
 			Content: response.Content,
 		})
-		
+
 		// Execute each tool call and add results to messages
 		for _, toolCall := range response.ToolCalls {
 			toolCallCount++
-			
+
 			result, err := ta.executeTool(wctx.Context(), toolCall)
 			if err != nil {
 				ta.log.Error("tool execution failed", "tool", toolCall.Name, "id", toolCall.ID, "error", err)
@@ -302,51 +301,51 @@ func (ta *ToolAgent) executeSimpleToolCalling(wctx workflow.WorkContext, startTi
 				})
 				continue
 			}
-			
+
 			// Convert tool result to JSON string for the conversation
 			resultJSON := ta.formatToolResult(result)
-			
+
 			// Add tool result message to conversation
 			messages = append(messages, llm.Message{
 				Role:    constants.RoleTool,
 				Content: resultJSON,
 				Name:    toolCall.Name,
 			})
-			
+
 			ta.log.Info("tool executed successfully", "tool", toolCall.Name, "id", toolCall.ID, "iteration", i+1)
 		}
-		
+
 		// Clear prompt for subsequent iterations (we have messages now)
 		prompt = ""
 	}
-	
+
 	// Check if we hit max tool calls limit
 	if toolCallCount >= ta.maxToolCalls {
 		ta.log.Warn("reached maximum tool calls limit", "max_calls", ta.maxToolCalls, "total_calls", toolCallCount)
 	}
-	
+
 	// Create final report
 	report := workflow.NewCompletedWorkReport()
 	report.Data = finalResponse
-	
+
 	elapsed := time.Since(startTime)
 	ta.log.Info("tool calling loop completed", "elapsed", elapsed, "total_tokens", totalTokens, "tool_calls", toolCallCount)
-	
+
 	// Add completion metadata
 	ta.addCompletionMetadata(&report, finalResponse, startTime)
-	
+
 	// Override some metadata with loop-specific info
 	report.SetMetadata("total_tokens", totalTokens)
 	report.SetMetadata("tool_calls_count", toolCallCount)
 	report.SetMetadata("execution_type", "tool_calling_loop")
-	
+
 	// Wait for callbacks to complete if WorkContext supports waiting
 	if ctxValue := wctx.Context().Value(constants.KeyWorkContext); ctxValue != nil {
 		if workCtx, ok := ctxValue.(workflow.WorkContext); ok {
 			workCtx.Wait()
 		}
 	}
-	
+
 	return report
 }
 
@@ -356,17 +355,17 @@ func (ta *ToolAgent) formatToolResult(result interface{}) string {
 	if result == nil {
 		return "null"
 	}
-	
+
 	// Handle string results (already formatted)
 	if str, ok := result.(string); ok {
 		return str
 	}
-	
+
 	// Handle structured results (convert to JSON)
 	if resultData, err := json.Marshal(result); err == nil {
 		return string(resultData)
 	}
-	
+
 	// Fallback to string representation
 	return fmt.Sprintf("%v", result)
 }
@@ -381,11 +380,11 @@ func (ta *ToolAgent) executeTool(ctx context.Context, toolCall llm.ToolCall) (in
 			break
 		}
 	}
-	
+
 	if targetTool == nil {
 		return nil, fmt.Errorf("tool %s not found in agent registry", toolCall.Name)
 	}
-	
+
 	// Execute the tool
 	return targetTool.Execute(ctx, toolCall.Args)
 }
@@ -393,14 +392,14 @@ func (ta *ToolAgent) executeTool(ctx context.Context, toolCall llm.ToolCall) (in
 // addCompletionMetadata adds completion metadata to the work report.
 func (ta *ToolAgent) addCompletionMetadata(report *workflow.WorkReport, response *llm.CompletionResponse, startTime time.Time) {
 	elapsed := time.Since(startTime)
-	
+
 	report.SetMetadata("agent_name", ta.name)
 	report.SetMetadata("agent_type", ta.agentType)
 	report.SetMetadata("elapsed", elapsed)
 	report.SetMetadata("token_usage", response.Usage)
 	report.SetMetadata("tool_calls_count", len(response.ToolCalls))
 	report.SetMetadata("execution_type", "simple_tool_calling")
-	
+
 	// Add agent completion event
 	event := workflow.Event{
 		Type:      workflow.EventAgentCompleted,

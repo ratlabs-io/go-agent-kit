@@ -50,22 +50,22 @@ func (sf *SequentialFlow) ThenChain(action Action) *SequentialFlow {
 		if prevOutput, ok := ctx.Get(constants.KeyPreviousOutput); ok {
 			ctx.Set(constants.KeyUserInput, prevOutput)
 		}
-		
+
 		// Run the action
 		report := action.Run(ctx)
 		if report.Status != StatusCompleted {
 			return report
 		}
-		
+
 		// Store this action's output for the next action
 		if report.Data != nil {
 			content := extractContent(report.Data)
 			ctx.Set(constants.KeyPreviousOutput, content)
 		}
-		
+
 		return report
 	})
-	
+
 	return sf.Then(chainAction)
 }
 
@@ -79,34 +79,34 @@ func (sf *SequentialFlow) ThenAccumulate(action Action) *SequentialFlow {
 				ctx.Set(constants.KeyOriginalInput, userInput)
 			}
 		}
-		
+
 		// Build accumulated input
 		var accumulated string
 		if original, ok := ctx.Get(constants.KeyOriginalInput); ok {
 			accumulated = fmt.Sprintf("Original request: %v", original)
 		}
-		
+
 		if prevOutput, ok := ctx.Get(constants.KeyPreviousOutput); ok {
 			accumulated += fmt.Sprintf("\n\nPrevious output: %v", prevOutput)
 		}
-		
+
 		ctx.Set(constants.KeyUserInput, accumulated)
-		
+
 		// Run the action
 		report := action.Run(ctx)
 		if report.Status != StatusCompleted {
 			return report
 		}
-		
+
 		// Store this action's output for the next action
 		if report.Data != nil {
 			content := extractContent(report.Data)
 			ctx.Set(constants.KeyPreviousOutput, content)
 		}
-		
+
 		return report
 	})
-	
+
 	return sf.Then(accumulateAction)
 }
 
@@ -116,7 +116,7 @@ func (sf *SequentialFlow) ThenAccumulate(action Action) *SequentialFlow {
 func (sf *SequentialFlow) Run(wctx WorkContext) WorkReport {
 	report := NewCompletedWorkReport()
 	logger := wctx.Logger().With("flow", "SequentialFlow", "name", sf.FlowName)
-	
+
 	for _, action := range sf.Actions {
 		startTime := time.Now()
 		actionReport := action.Run(wctx)
@@ -143,7 +143,7 @@ func (sf *SequentialFlow) Run(wctx WorkContext) WorkReport {
 		}
 
 		logger.Info("action completed", "action", action.Name(), "elapsed", elapsed)
-		
+
 		// Store action output for potential chaining
 		if actionReport.Data != nil {
 			content := extractContent(actionReport.Data)
@@ -152,7 +152,6 @@ func (sf *SequentialFlow) Run(wctx WorkContext) WorkReport {
 			report.Data = actionReport.Data
 		}
 	}
-	
+
 	return report
 }
-

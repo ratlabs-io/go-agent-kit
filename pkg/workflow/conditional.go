@@ -40,7 +40,7 @@ func (cf *ConditionalFlow) Name() string {
 // If the condition evaluates to false and ifFalse is nil, returns a skipped report.
 func (cf *ConditionalFlow) Run(wctx WorkContext) WorkReport {
 	startTime := time.Now()
-	
+
 	// Evaluate the condition
 	result, err := cf.Condition(wctx)
 	if err != nil {

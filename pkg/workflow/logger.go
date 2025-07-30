@@ -13,16 +13,16 @@ import (
 type Logger interface {
 	// Debug logs a debug message with optional key-value pairs
 	Debug(msg string, keysAndValues ...interface{})
-	
+
 	// Info logs an info message with optional key-value pairs
 	Info(msg string, keysAndValues ...interface{})
-	
+
 	// Warn logs a warning message with optional key-value pairs
 	Warn(msg string, keysAndValues ...interface{})
-	
+
 	// Error logs an error message with optional key-value pairs
 	Error(msg string, keysAndValues ...interface{})
-	
+
 	// With returns a new logger with the given key-value pairs added as context
 	With(keysAndValues ...interface{}) Logger
 }

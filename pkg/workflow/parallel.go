@@ -50,11 +50,12 @@ func (pf *ParallelFlow) Run(wctx WorkContext) WorkReport {
 			report := action.Run(wctx)
 			elapsed := time.Since(startTime)
 
-			if report.Status == StatusFailure {
+			switch report.Status {
+			case StatusFailure:
 				logger.Error("action failed", "action", action.Name(), "elapsed", elapsed, "errors", report.Errors)
-			} else if report.Status == StatusSkipped {
+			case StatusSkipped:
 				logger.Info("action skipped", "action", action.Name(), "elapsed", elapsed)
-			} else {
+			default:
 				logger.Info("action completed", "action", action.Name(), "elapsed", elapsed)
 			}
 			reports <- report
@@ -67,18 +68,19 @@ func (pf *ParallelFlow) Run(wctx WorkContext) WorkReport {
 	combinedReport := NewCompletedWorkReport()
 	var hasCompleted bool
 	var outputs []string
-	
+
 	for report := range reports {
 		// Merge events and metadata from all reports
 		combinedReport.Events = append(combinedReport.Events, report.Events...)
 		for k, v := range report.Metadata {
 			combinedReport.SetMetadata(k, v)
 		}
-		
-		if report.Status == StatusFailure {
+
+		switch report.Status {
+		case StatusFailure:
 			combinedReport.Status = StatusFailure
 			combinedReport.Errors = append(combinedReport.Errors, report.Errors...)
-		} else if report.Status == StatusCompleted {
+		case StatusCompleted:
 			hasCompleted = true
 			// Collect outputs from all successful actions
 			if report.Data != nil {
@@ -89,12 +91,12 @@ func (pf *ParallelFlow) Run(wctx WorkContext) WorkReport {
 			}
 		}
 	}
-	
+
 	// If no actions completed successfully, mark as skipped
 	if !hasCompleted && combinedReport.Status != StatusFailure {
 		combinedReport.Status = StatusSkipped
 	}
-	
+
 	// Combine all outputs into a single response for chaining
 	if len(outputs) > 0 {
 		combinedContent := strings.Join(outputs, "\n\n---\n\n")
@@ -105,4 +107,3 @@ func (pf *ParallelFlow) Run(wctx WorkContext) WorkReport {
 
 	return combinedReport
 }
-

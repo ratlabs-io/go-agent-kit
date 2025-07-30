@@ -19,13 +19,13 @@ type ErrorHandlerAction interface {
 
 // DefaultErrorHandlerAction is a simple error handler that just logs and returns.
 type DefaultErrorHandlerAction struct {
-	name     string
+	name        string
 	handlerFunc func(WorkContext, error) WorkReport
 }
 
 func NewDefaultErrorHandlerAction(name string, handlerFunc func(WorkContext, error) WorkReport) *DefaultErrorHandlerAction {
 	return &DefaultErrorHandlerAction{
-		name:     name,
+		name:        name,
 		handlerFunc: handlerFunc,
 	}
 }
@@ -54,17 +54,17 @@ type CatchHandler struct {
 
 // TryCatch represents a try-catch-finally construct.
 type TryCatch struct {
-	name         string
-	tryAction    Action
-	catchHandlers []CatchHandler
+	name           string
+	tryAction      Action
+	catchHandlers  []CatchHandler
 	catchAllAction ErrorHandlerAction
-	finallyAction Action
+	finallyAction  Action
 }
 
 // NewTryCatch creates a new try-catch construct.
 func NewTryCatch(name string) *TryCatch {
 	return &TryCatch{
-		name:         name,
+		name:          name,
 		catchHandlers: make([]CatchHandler, 0),
 	}
 }
@@ -111,11 +111,11 @@ func (tc *TryCatch) Run(wctx WorkContext) WorkReport {
 	logger.Debug("Starting try-catch", "type", constants.FlowTypeTryCatch, "name", tc.name)
 
 	var finalReport WorkReport
-	
+
 	// Execute try block
 	logger.Debug("Try-catch executing try block", "name", tc.name)
 	tryReport := tc.tryAction.Run(wctx)
-	
+
 	// Handle success case
 	if tryReport.Status == StatusCompleted {
 		logger.Debug("Try-catch try block completed successfully", "name", tc.name)
@@ -125,12 +125,12 @@ func (tc *TryCatch) Run(wctx WorkContext) WorkReport {
 		logger.Debug("Try-catch try block failed, checking catch handlers", "name", tc.name)
 		finalReport = tc.handleErrors(wctx, tryReport)
 	}
-	
+
 	// Execute finally block if present
 	if tc.finallyAction != nil {
 		logger.Debug("Try-catch executing finally block", "name", tc.name)
 		finallyReport := tc.finallyAction.Run(wctx)
-		
+
 		// If finally block fails, that overrides the previous result
 		if finallyReport.Status == StatusFailure {
 			logger.Error("Try-catch finally block failed", "name", tc.name)
@@ -140,7 +140,7 @@ func (tc *TryCatch) Run(wctx WorkContext) WorkReport {
 			}
 			finalReport = finallyReport
 		}
-		
+
 		// Merge metadata from finally block
 		if len(finallyReport.Metadata) > 0 {
 			if finalReport.Metadata == nil {
@@ -151,7 +151,7 @@ func (tc *TryCatch) Run(wctx WorkContext) WorkReport {
 			}
 		}
 	}
-	
+
 	logger.Debug("Completed try-catch", "type", constants.FlowTypeTryCatch, "name", tc.name, "status", finalReport.Status)
 	return finalReport
 }
@@ -159,7 +159,7 @@ func (tc *TryCatch) Run(wctx WorkContext) WorkReport {
 // handleErrors processes errors through the catch handlers.
 func (tc *TryCatch) handleErrors(wctx WorkContext, tryReport WorkReport) WorkReport {
 	logger := wctx.Logger()
-	
+
 	// Try specific catch handlers first
 	for i, handler := range tc.catchHandlers {
 		for _, err := range tryReport.Errors {
@@ -169,7 +169,7 @@ func (tc *TryCatch) handleErrors(wctx WorkContext, tryReport WorkReport) WorkRep
 			}
 		}
 	}
-	
+
 	// Try catch-all handler
 	if tc.catchAllAction != nil {
 		logger.Debug("Try-catch using catch-all handler", "name", tc.name)
@@ -182,7 +182,7 @@ func (tc *TryCatch) handleErrors(wctx WorkContext, tryReport WorkReport) WorkRep
 		}
 		return tc.catchAllAction.HandleError(wctx, err)
 	}
-	
+
 	// No handlers matched, return original report
 	logger.Debug("Try-catch no catch handlers matched, returning original error", "name", tc.name)
 	return tryReport
@@ -247,16 +247,16 @@ func TimeoutError(err error) bool {
 	if err == nil {
 		return false
 	}
-	
+
 	errStr := err.Error()
 	timeoutKeywords := []string{"timeout", "deadline", "context canceled", "context deadline exceeded"}
-	
+
 	for _, keyword := range timeoutKeywords {
 		if contains(errStr, keyword) {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -265,19 +265,19 @@ func NetworkError(err error) bool {
 	if err == nil {
 		return false
 	}
-	
+
 	errStr := err.Error()
 	networkKeywords := []string{
 		"connection refused", "connection reset", "network unreachable",
 		"no such host", "dns", "i/o timeout",
 	}
-	
+
 	for _, keyword := range networkKeywords {
 		if contains(errStr, keyword) {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -286,15 +286,15 @@ func ValidationError(err error) bool {
 	if err == nil {
 		return false
 	}
-	
+
 	errStr := err.Error()
 	validationKeywords := []string{"validation", "invalid", "malformed", "bad request"}
-	
+
 	for _, keyword := range validationKeywords {
 		if contains(errStr, keyword) {
 			return true
 		}
 	}
-	
+
 	return false
 }

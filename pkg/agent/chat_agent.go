@@ -107,23 +107,22 @@ func (ca *ChatAgent) WithResponseType(responseType llm.ResponseType) *ChatAgent 
 	return ca
 }
 
-
 // Run executes the ChatAgent by performing a single LLM completion.
 func (ca *ChatAgent) Run(wctx workflow.WorkContext) workflow.WorkReport {
 	startTime := time.Now()
 	logger := wctx.Logger().With("agent", "ChatAgent", "name", ca.name)
-	
+
 	if ca.client == nil {
 		logger.Error("no LLM client configured")
 		return workflow.NewFailedWorkReport(fmt.Errorf("no LLM client configured for agent %s", ca.name))
 	}
-	
+
 	// ChatAgent doesn't support tools - use ToolAgent for tool-calling
 	var toolDefs []llm.ToolDefinition
-	
+
 	// Build messages for the completion request
 	var messages []llm.Message
-	
+
 	// Check for runtime message history in context
 	var messageHistory []llm.Message
 	if runtimeHistory, ok := wctx.Get(constants.KeyMessageHistory); ok {
@@ -131,12 +130,12 @@ func (ca *ChatAgent) Run(wctx workflow.WorkContext) workflow.WorkReport {
 			messageHistory = historySlice
 		}
 	}
-	
+
 	// Add message history first
 	if len(messageHistory) > 0 {
 		messages = append(messages, messageHistory...)
 	}
-	
+
 	// Add system prompt if provided (only if not already in history)
 	if ca.prompt != "" {
 		// Check if system prompt already exists in history
@@ -154,23 +153,23 @@ func (ca *ChatAgent) Run(wctx workflow.WorkContext) workflow.WorkReport {
 			})
 		}
 	}
-	
+
 	// Check for user input in context
 	if userInput, ok := wctx.Get(constants.KeyUserInput); ok {
 		if userInputStr, ok := userInput.(string); ok && userInputStr != "" {
 			messages = append(messages, llm.Message{
-				Role:    constants.RoleUser, 
+				Role:    constants.RoleUser,
 				Content: userInputStr,
 			})
 		}
 	}
-	
+
 	// If no messages were built, fall back to prompt-only mode
 	var prompt string
 	if len(messages) == 0 && ca.prompt != "" {
 		prompt = ca.prompt
 	}
-	
+
 	// Prepare the completion request
 	req := llm.CompletionRequest{
 		Model:        ca.model,
@@ -184,7 +183,7 @@ func (ca *ChatAgent) Run(wctx workflow.WorkContext) workflow.WorkReport {
 			"agent_type": ca.agentType,
 		},
 	}
-	
+
 	// Perform the LLM completion
 	response, err := ca.client.Complete(wctx.Context(), req)
 	if err != nil {
@@ -192,14 +191,14 @@ func (ca *ChatAgent) Run(wctx workflow.WorkContext) workflow.WorkReport {
 		logger.Error("LLM completion failed", "elapsed", elapsed, "error", err)
 		return workflow.NewFailedWorkReport(fmt.Errorf("LLM completion failed: %w", err))
 	}
-	
+
 	elapsed := time.Since(startTime)
 	logger.Info("LLM completion successful", "elapsed", elapsed, "tokens", response.Usage.TotalTokens)
-	
+
 	// Create the work report
 	report := workflow.NewCompletedWorkReport()
 	report.Data = response
-	
+
 	// Emit event if WorkContext supports events
 	// Check if this WorkContext has event capabilities by looking at the context value
 	if ctxValue := wctx.Context().Value(constants.KeyWorkContext); ctxValue != nil {
@@ -217,20 +216,20 @@ func (ca *ChatAgent) Run(wctx workflow.WorkContext) workflow.WorkReport {
 			workCtx.EmitEvent(event)
 		}
 	}
-	
+
 	// Add metadata
 	report.SetMetadata("agent_name", ca.name)
 	report.SetMetadata("agent_type", ca.agentType)
 	report.SetMetadata("elapsed", elapsed)
 	report.SetMetadata("token_usage", response.Usage)
-	
+
 	// Wait for callbacks to complete if WorkContext supports waiting
 	if ctxValue := wctx.Context().Value(constants.KeyWorkContext); ctxValue != nil {
 		if workCtx, ok := ctxValue.(workflow.WorkContext); ok {
 			workCtx.Wait()
 		}
 	}
-	
+
 	return report
 }
 
@@ -240,14 +239,14 @@ func convertSchemaToMap(schema tools.Schema) map[string]interface{} {
 		"type":        schema.Type,
 		"description": schema.Description,
 	}
-	
+
 	if schema.Properties != nil {
 		result["properties"] = schema.Properties
 	}
-	
+
 	if len(schema.Required) > 0 {
 		result["required"] = schema.Required
 	}
-	
+
 	return result
 }

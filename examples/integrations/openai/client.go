@@ -41,37 +41,42 @@ func NewClientWithURL(apiKey, baseURL string) *Client {
 func (c *Client) Complete(ctx context.Context, req llm.CompletionRequest) (*llm.CompletionResponse, error) {
 	// Convert to OpenAI format
 	openAIReq := c.convertRequest(req)
-	
+
 	// Make API request
 	reqBody, err := json.Marshal(openAIReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
-	
+
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/chat/completions", bytes.NewReader(reqBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
-	
+
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
-	
+
 	resp, err := c.client.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("API request failed: %w", err)
 	}
-	defer resp.Body.Close()
-	
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			// Log error but don't fail the request
+			_ = err // Silently ignore close errors
+		}
+	}()
+
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, body)
 	}
-	
+
 	var openAIResp openAIResponse
 	if err := json.NewDecoder(resp.Body).Decode(&openAIResp); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
-	
+
 	// Convert back to our format
 	return c.convertResponse(openAIResp), nil
 }
@@ -87,7 +92,7 @@ func (c *Client) convertRequest(req llm.CompletionRequest) openAIRequest {
 		Model:       req.Model,
 		Temperature: 0.7,
 	}
-	
+
 	// Build messages
 	if len(req.Messages) > 0 {
 		// Use provided messages
@@ -103,7 +108,7 @@ func (c *Client) convertRequest(req llm.CompletionRequest) openAIRequest {
 			{Role: "user", Content: req.Prompt},
 		}
 	}
-	
+
 	// Handle JSON response requests
 	if req.ResponseType == llm.ResponseTypeJSONObject {
 		openAIReq.ResponseFormat = &openAIResponseFormat{
@@ -120,7 +125,7 @@ func (c *Client) convertRequest(req llm.CompletionRequest) openAIRequest {
 			},
 		}
 	}
-	
+
 	// Convert tools if provided
 	if len(req.Tools) > 0 {
 		for _, tool := range req.Tools {
@@ -135,7 +140,7 @@ func (c *Client) convertRequest(req llm.CompletionRequest) openAIRequest {
 		}
 		openAIReq.ToolChoice = "auto"
 	}
-	
+
 	return openAIReq
 }
 
@@ -149,11 +154,11 @@ func (c *Client) convertResponse(resp openAIResponse) *llm.CompletionResponse {
 		},
 		Metadata: make(map[string]interface{}),
 	}
-	
+
 	if len(resp.Choices) > 0 {
 		choice := resp.Choices[0]
 		result.Content = choice.Message.Content
-		
+
 		// Convert tool calls if present
 		for _, toolCall := range choice.Message.ToolCalls {
 			var args map[string]interface{}
@@ -161,7 +166,7 @@ func (c *Client) convertResponse(resp openAIResponse) *llm.CompletionResponse {
 				// If parsing fails, store as string
 				args = map[string]interface{}{"raw": toolCall.Function.Arguments}
 			}
-			
+
 			result.ToolCalls = append(result.ToolCalls, llm.ToolCall{
 				ID:   toolCall.ID,
 				Name: toolCall.Function.Name,
@@ -169,18 +174,18 @@ func (c *Client) convertResponse(resp openAIResponse) *llm.CompletionResponse {
 			})
 		}
 	}
-	
+
 	return result
 }
 
 // OpenAI API types (simplified)
 type openAIRequest struct {
-	Model          string                 `json:"model"`
-	Messages       []openAIMessage        `json:"messages"`
-	Tools          []openAITool           `json:"tools,omitempty"`
-	ToolChoice     string                 `json:"tool_choice,omitempty"`
-	Temperature    float64                `json:"temperature"`
-	ResponseFormat *openAIResponseFormat  `json:"response_format,omitempty"`
+	Model          string                `json:"model"`
+	Messages       []openAIMessage       `json:"messages"`
+	Tools          []openAITool          `json:"tools,omitempty"`
+	ToolChoice     string                `json:"tool_choice,omitempty"`
+	Temperature    float64               `json:"temperature"`
+	ResponseFormat *openAIResponseFormat `json:"response_format,omitempty"`
 }
 
 type openAIMessage struct {
@@ -201,9 +206,9 @@ type openAIFunction struct {
 }
 
 type openAIToolCall struct {
-	ID       string                 `json:"id"`
-	Type     string                 `json:"type"`
-	Function openAIFunctionCall    `json:"function"`
+	ID       string             `json:"id"`
+	Type     string             `json:"type"`
+	Function openAIFunctionCall `json:"function"`
 }
 
 type openAIFunctionCall struct {
@@ -227,8 +232,8 @@ type openAIUsage struct {
 }
 
 type openAIResponseFormat struct {
-	Type       string              `json:"type"` // "text", "json_object", "json_schema"
-	JSONSchema *openAIJSONSchema   `json:"json_schema,omitempty"`
+	Type       string            `json:"type"` // "text", "json_object", "json_schema"
+	JSONSchema *openAIJSONSchema `json:"json_schema,omitempty"`
 }
 
 type openAIJSONSchema struct {

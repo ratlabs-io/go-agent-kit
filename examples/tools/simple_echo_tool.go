@@ -34,7 +34,7 @@ func (set *SimpleEchoTool) Execute(ctx context.Context, params map[string]interf
 	if !ok {
 		return nil, fmt.Errorf("message parameter is required and must be a string")
 	}
-	
+
 	// Return simple result
 	return map[string]interface{}{
 		"message":   message,

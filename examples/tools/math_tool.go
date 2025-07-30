@@ -58,13 +58,13 @@ func (mt *MathTool) Execute(ctx context.Context, params map[string]interface{}) 
 	if !ok {
 		return nil, fmt.Errorf("operation parameter is required and must be a string")
 	}
-	
+
 	// Extract first number
 	a, ok := params["a"].(float64)
 	if !ok {
 		return nil, fmt.Errorf("parameter 'a' is required and must be a number")
 	}
-	
+
 	// Extract second number (for binary operations)
 	var b float64
 	var hasBinary bool
@@ -72,29 +72,29 @@ func (mt *MathTool) Execute(ctx context.Context, params map[string]interface{}) 
 		b = bVal
 		hasBinary = true
 	}
-	
+
 	// Perform operation
 	var result float64
-	
+
 	switch operation {
 	case "add":
 		if !hasBinary {
 			return nil, fmt.Errorf("add operation requires parameter 'b'")
 		}
 		result = a + b
-		
+
 	case "subtract":
 		if !hasBinary {
 			return nil, fmt.Errorf("subtract operation requires parameter 'b'")
 		}
 		result = a - b
-		
+
 	case "multiply":
 		if !hasBinary {
 			return nil, fmt.Errorf("multiply operation requires parameter 'b'")
 		}
 		result = a * b
-		
+
 	case "divide":
 		if !hasBinary {
 			return nil, fmt.Errorf("divide operation requires parameter 'b'")
@@ -103,26 +103,26 @@ func (mt *MathTool) Execute(ctx context.Context, params map[string]interface{}) 
 			return nil, fmt.Errorf("division by zero")
 		}
 		result = a / b
-		
+
 	case "power":
 		if !hasBinary {
 			return nil, fmt.Errorf("power operation requires parameter 'b'")
 		}
 		result = math.Pow(a, b)
-		
+
 	case "sqrt":
 		if a < 0 {
 			return nil, fmt.Errorf("cannot take square root of negative number")
 		}
 		result = math.Sqrt(a)
-		
+
 	case "abs":
 		result = math.Abs(a)
-		
+
 	default:
 		return nil, fmt.Errorf("unsupported operation: %s", operation)
 	}
-	
+
 	// Check for invalid results
 	if math.IsNaN(result) {
 		return nil, fmt.Errorf("operation resulted in NaN")
@@ -130,17 +130,17 @@ func (mt *MathTool) Execute(ctx context.Context, params map[string]interface{}) 
 	if math.IsInf(result, 0) {
 		return nil, fmt.Errorf("operation resulted in infinity")
 	}
-	
+
 	// Prepare response
 	response := map[string]interface{}{
 		"operation": operation,
 		"a":         a,
 		"result":    result,
 	}
-	
+
 	if hasBinary {
 		response["b"] = b
 	}
-	
+
 	return response, nil
 }

@@ -17,7 +17,7 @@ type CompletionRequest struct {
 
 // Message represents a chat message.
 type Message struct {
-	Role    string `json:"role"`    // "system", "user", "assistant", "tool"
+	Role    string `json:"role"` // "system", "user", "assistant", "tool"
 	Content string `json:"content"`
 	Name    string `json:"name,omitempty"` // For tool messages
 }
@@ -39,9 +39,9 @@ type CompletionResponse struct {
 
 // ToolCall represents a tool call made by the LLM.
 type ToolCall struct {
-	ID       string                 `json:"id"`
-	Name     string                 `json:"name"`
-	Args     map[string]interface{} `json:"args"`
+	ID   string                 `json:"id"`
+	Name string                 `json:"name"`
+	Args map[string]interface{} `json:"args"`
 }
 
 // Usage represents token usage information.
@@ -73,7 +73,7 @@ type JSONSchema struct {
 type Client interface {
 	// Complete performs a completion request and returns the response.
 	Complete(ctx context.Context, req CompletionRequest) (*CompletionResponse, error)
-	
+
 	// Close cleans up any resources used by the client.
 	Close() error
 }

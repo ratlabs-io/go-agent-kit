@@ -15,7 +15,7 @@ import (
 // SimpleAgentWorkflow demonstrates a basic workflow with a single chat agent.
 func main() {
 	fmt.Println("=== Simple Agent Workflow Example ===")
-	
+
 	// Get OpenAI API key from environment
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
@@ -23,14 +23,14 @@ func main() {
 		fmt.Println("Please set it with: export OPENAI_API_KEY=your-api-key-here")
 		os.Exit(1)
 	}
-	
+
 	// Create OpenAI client
 	llmClient := openai.NewClient(apiKey)
-	
+
 	// Example 1: Basic Text Response
 	fmt.Println("\n--- Example 1: Basic Text Response ---")
 	runBasicTextExample(llmClient)
-	
+
 	// Example 2: JSON Response (no schema)
 	fmt.Println("\n--- Example 2: JSON Response ---")
 	runJSONResponseExample(llmClient)
@@ -42,17 +42,17 @@ func runBasicTextExample(llmClient llm.Client) {
 		WithModel("gpt-3.5-turbo").
 		WithPrompt("You are a helpful assistant. Respond concisely.").
 		WithClient(llmClient)
-	
+
 	// Create workflow context
 	ctx := context.Background()
 	workflowCtx := workflow.NewWorkContext(ctx)
 	workflowCtx.Set("user_input", "What is the capital of France?")
-	
+
 	// Run the agent
 	fmt.Println("Question: What is the capital of France?")
 	fmt.Println("Running chat agent...")
 	report := chatAgent.Run(workflowCtx)
-	
+
 	// Check results
 	if report.Status == workflow.StatusCompleted {
 		fmt.Printf("✅ Agent completed successfully!\n")
@@ -75,17 +75,17 @@ func runJSONResponseExample(llmClient llm.Client) {
 - "additional_info": any relevant extra information`).
 		WithJSONResponse().
 		WithClient(llmClient)
-	
+
 	// Create workflow context
 	ctx := context.Background()
 	workflowCtx := workflow.NewWorkContext(ctx)
 	workflowCtx.Set("user_input", "What is the capital of France?")
-	
+
 	// Run the agent
 	fmt.Println("Question: What is the capital of France?")
 	fmt.Println("Running JSON chat agent...")
 	report := jsonAgent.Run(workflowCtx)
-	
+
 	// Check results
 	if report.Status == workflow.StatusCompleted {
 		fmt.Printf("✅ Agent completed successfully!\n")

@@ -10,21 +10,21 @@ import (
 type EventType string
 
 const (
-	EventAgentStarted   EventType = "agent.started"
-	EventAgentCompleted EventType = "agent.completed"
-	EventAgentFailed    EventType = "agent.failed"
-	EventWorkflowStarted EventType = "workflow.started"
+	EventAgentStarted      EventType = "agent.started"
+	EventAgentCompleted    EventType = "agent.completed"
+	EventAgentFailed       EventType = "agent.failed"
+	EventWorkflowStarted   EventType = "workflow.started"
 	EventWorkflowCompleted EventType = "workflow.completed"
-	EventWorkflowFailed  EventType = "workflow.failed"
-	EventToolCalled     EventType = "tool.called"
-	EventToolCompleted  EventType = "tool.completed"
-	EventToolFailed     EventType = "tool.failed"
+	EventWorkflowFailed    EventType = "workflow.failed"
+	EventToolCalled        EventType = "tool.called"
+	EventToolCompleted     EventType = "tool.completed"
+	EventToolFailed        EventType = "tool.failed"
 )
 
 // Event represents something that happened during workflow/agent execution.
 type Event struct {
 	Type      EventType              `json:"type"`
-	Source    string                 `json:"source"`    // Agent or workflow name
+	Source    string                 `json:"source"` // Agent or workflow name
 	Timestamp time.Time              `json:"timestamp"`
 	Payload   interface{}            `json:"payload"`
 	Metadata  map[string]interface{} `json:"metadata,omitempty"`
@@ -64,7 +64,8 @@ func (cr *CallbackRegistry) Emit(ctx context.Context, event Event) {
 			defer func() {
 				// Recover from panics in user callbacks
 				if r := recover(); r != nil {
-					// Could log this if we had a logger, but keeping it simple
+					// Silently recover from callback panics to prevent workflow failure
+					_ = r
 				}
 			}()
 			cb(ctx, event)
@@ -79,7 +80,8 @@ func (cr *CallbackRegistry) EmitSync(ctx context.Context, event Event) {
 			defer func() {
 				// Recover from panics in user callbacks
 				if r := recover(); r != nil {
-					// Could log this if we had a logger, but keeping it simple
+					// Silently recover from callback panics to prevent workflow failure
+					_ = r
 				}
 			}()
 			cb(ctx, event)

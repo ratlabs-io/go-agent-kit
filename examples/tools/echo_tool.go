@@ -3,6 +3,7 @@ package builtin
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ratlabs-io/go-agent-kit/pkg/tools"
@@ -62,13 +63,13 @@ func (et *EchoTool) Execute(ctx context.Context, params map[string]interface{}) 
 	if !ok {
 		return nil, fmt.Errorf("message parameter is required and must be a string")
 	}
-	
+
 	// Extract transform option
 	transform := "none"
 	if t, ok := params["transform"].(string); ok {
 		transform = t
 	}
-	
+
 	// Extract repeat count
 	repeat := 1
 	if r, ok := params["repeat"].(float64); ok {
@@ -77,23 +78,23 @@ func (et *EchoTool) Execute(ctx context.Context, params map[string]interface{}) 
 	if repeat < 1 || repeat > 10 {
 		repeat = 1
 	}
-	
+
 	// Apply transformation
 	transformedMessage := et.applyTransform(message, transform)
-	
+
 	// Create result
 	var result []string
 	for i := 0; i < repeat; i++ {
 		result = append(result, transformedMessage)
 	}
-	
+
 	return map[string]interface{}{
 		"original_message":    message,
 		"transformed_message": transformedMessage,
-		"transform":          transform,
-		"repeat_count":       repeat,
-		"result":             result,
-		"timestamp":          time.Now(),
+		"transform":           transform,
+		"repeat_count":        repeat,
+		"result":              result,
+		"timestamp":           time.Now(),
 	}, nil
 }
 
@@ -101,9 +102,9 @@ func (et *EchoTool) Execute(ctx context.Context, params map[string]interface{}) 
 func (et *EchoTool) applyTransform(message, transform string) string {
 	switch transform {
 	case "upper":
-		return fmt.Sprintf("%s", message) // Using fmt to keep it simple, could use strings.ToUpper
+		return strings.ToUpper(message)
 	case "lower":
-		return fmt.Sprintf("%s", message) // Using fmt to keep it simple, could use strings.ToLower  
+		return strings.ToLower(message)
 	case "reverse":
 		runes := []rune(message)
 		for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {

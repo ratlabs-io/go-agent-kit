@@ -48,10 +48,10 @@ func NewWorkContextWithCallbacks(ctx context.Context, callbacks *CallbackRegistr
 		logger:      LoggerFromContext(ctx),
 		callbacks:   callbacks,
 	}
-	
+
 	// Store a reference to this WorkContext in the context for event emission
 	wc.ctx = context.WithValue(wc.ctx, constants.KeyWorkContext, wc)
-	
+
 	return wc
 }
 
@@ -93,19 +93,19 @@ func (wc *DefaultWorkContext) Logger() Logger {
 func (wc *DefaultWorkContext) WithLogger(logger Logger) WorkContext {
 	wc.mu.Lock()
 	defer wc.mu.Unlock()
-	
+
 	newCtx := &DefaultWorkContext{
 		ctx:         wc.ctx,
 		contextData: make(map[interface{}]interface{}),
 		logger:      logger,
 		callbacks:   wc.callbacks,
 	}
-	
+
 	// Copy existing data
 	for k, v := range wc.contextData {
 		newCtx.contextData[k] = v
 	}
-	
+
 	return newCtx
 }
 

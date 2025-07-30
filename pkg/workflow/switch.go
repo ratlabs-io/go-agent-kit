@@ -15,10 +15,10 @@ type Case struct {
 // SwitchFlow is an action that executes different actions based on multiple conditions.
 // It evaluates conditions in order and runs the action for the first condition that evaluates to true.
 type SwitchFlow struct {
-	FlowName     string
-	Cases        []Case
+	FlowName      string
+	Cases         []Case
 	DefaultAction Action // Optional - can be nil
-	Log          *slog.Logger
+	Log           *slog.Logger
 }
 
 // NewSwitchFlow creates a new SwitchFlow with the given name, cases, and optional default action.
@@ -26,10 +26,10 @@ type SwitchFlow struct {
 func NewSwitchFlow(name string, cases []Case, defaultAction Action) *SwitchFlow {
 	log := slog.With("flow", "SwitchFlow")
 	return &SwitchFlow{
-		FlowName:     name,
-		Cases:        cases,
+		FlowName:      name,
+		Cases:         cases,
 		DefaultAction: defaultAction,
-		Log:          log,
+		Log:           log,
 	}
 }
 
@@ -79,19 +79,19 @@ func (sf *SwitchFlow) Name() string {
 // If no conditions match and no default action is provided, returns a skipped report.
 func (sf *SwitchFlow) Run(wctx WorkContext) WorkReport {
 	startTime := time.Now()
-	
+
 	// Evaluate each case in order
 	for i, caseItem := range sf.Cases {
 		conditionStart := time.Now()
 		result, err := caseItem.Condition(wctx)
 		conditionElapsed := time.Since(conditionStart)
-		
+
 		if err != nil {
 			elapsed := time.Since(startTime)
-			sf.Log.Error("case condition evaluation failed", 
-				"flow", sf.FlowName, 
-				"case", i, 
-				"elapsed", elapsed, 
+			sf.Log.Error("case condition evaluation failed",
+				"flow", sf.FlowName,
+				"case", i,
+				"elapsed", elapsed,
 				"condition_elapsed", conditionElapsed,
 				"error", err)
 			return WorkReport{
@@ -102,17 +102,17 @@ func (sf *SwitchFlow) Run(wctx WorkContext) WorkReport {
 			}
 		}
 
-		sf.Log.Debug("case condition evaluated", 
-			"flow", sf.FlowName, 
-			"case", i, 
-			"result", result, 
+		sf.Log.Debug("case condition evaluated",
+			"flow", sf.FlowName,
+			"case", i,
+			"result", result,
 			"condition_elapsed", conditionElapsed)
 
 		if result {
 			elapsed := time.Since(startTime)
-			sf.Log.Info("case matched, executing action", 
-				"flow", sf.FlowName, 
-				"case", i, 
+			sf.Log.Info("case matched, executing action",
+				"flow", sf.FlowName,
+				"case", i,
 				"action", caseItem.Action.Name(),
 				"evaluation_elapsed", elapsed)
 			return caseItem.Action.Run(wctx)
@@ -122,8 +122,8 @@ func (sf *SwitchFlow) Run(wctx WorkContext) WorkReport {
 	// No cases matched, try default action
 	if sf.DefaultAction != nil {
 		elapsed := time.Since(startTime)
-		sf.Log.Info("no cases matched, executing default action", 
-			"flow", sf.FlowName, 
+		sf.Log.Info("no cases matched, executing default action",
+			"flow", sf.FlowName,
 			"action", sf.DefaultAction.Name(),
 			"evaluation_elapsed", elapsed)
 		return sf.DefaultAction.Run(wctx)
@@ -131,7 +131,7 @@ func (sf *SwitchFlow) Run(wctx WorkContext) WorkReport {
 
 	// No cases matched and no default action
 	elapsed := time.Since(startTime)
-	sf.Log.Info("no cases matched and no default action, skipping", 
+	sf.Log.Info("no cases matched and no default action, skipping",
 		"flow", sf.FlowName,
 		"evaluation_elapsed", elapsed)
 	return NewSkippedWorkReport()

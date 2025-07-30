@@ -23,18 +23,18 @@ const (
 
 // CircuitBreaker implements the circuit breaker pattern for retry operations.
 type CircuitBreaker struct {
-	name                string
-	action              Action
-	failureThreshold    int
-	recoveryTimeout     time.Duration
-	resetTimeout        time.Duration
-	
+	name             string
+	action           Action
+	failureThreshold int
+	recoveryTimeout  time.Duration
+	resetTimeout     time.Duration
+
 	// State tracking
-	mu             sync.RWMutex
-	state          CircuitBreakerState
-	failures       int
-	lastFailTime   time.Time
-	lastResetTime  time.Time
+	mu            sync.RWMutex
+	state         CircuitBreakerState
+	failures      int
+	lastFailTime  time.Time
+	lastResetTime time.Time
 }
 
 // NewCircuitBreaker creates a new circuit breaker.
@@ -44,7 +44,7 @@ func NewCircuitBreaker(name string, failureThreshold int, recoveryTimeout, reset
 		failureThreshold: failureThreshold,
 		recoveryTimeout:  recoveryTimeout,
 		resetTimeout:     resetTimeout,
-		state:           CircuitBreakerClosed,
+		state:            CircuitBreakerClosed,
 	}
 }
 
@@ -66,18 +66,18 @@ func (cb *CircuitBreaker) Run(wctx WorkContext) WorkReport {
 	}
 
 	logger := wctx.Logger()
-	
+
 	// Check if we should allow the request
 	if !cb.allowRequest() {
 		logger.Debug("Circuit breaker request rejected", "name", cb.name, "state", cb.getState())
 		return NewFailedWorkReport(fmt.Errorf("circuit breaker %s is open", cb.name))
 	}
-	
+
 	logger.Debug("Circuit breaker executing action", "name", cb.name, "state", cb.getState())
-	
+
 	// Execute the action
 	report := cb.action.Run(wctx)
-	
+
 	// Update circuit breaker state based on result
 	if report.Status == StatusCompleted {
 		cb.onSuccess()
@@ -86,7 +86,7 @@ func (cb *CircuitBreaker) Run(wctx WorkContext) WorkReport {
 		cb.onFailure()
 		logger.Debug("Circuit breaker action failed", "name", cb.name)
 	}
-	
+
 	return report
 }
 
@@ -94,9 +94,9 @@ func (cb *CircuitBreaker) Run(wctx WorkContext) WorkReport {
 func (cb *CircuitBreaker) allowRequest() bool {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
-	
+
 	now := time.Now()
-	
+
 	switch cb.state {
 	case CircuitBreakerClosed:
 		return true
@@ -118,7 +118,7 @@ func (cb *CircuitBreaker) allowRequest() bool {
 func (cb *CircuitBreaker) onSuccess() {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
-	
+
 	cb.failures = 0
 	if cb.state == CircuitBreakerHalfOpen {
 		cb.state = CircuitBreakerClosed
@@ -129,10 +129,10 @@ func (cb *CircuitBreaker) onSuccess() {
 func (cb *CircuitBreaker) onFailure() {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
-	
+
 	cb.failures++
 	cb.lastFailTime = time.Now()
-	
+
 	if cb.failures >= cb.failureThreshold {
 		cb.state = CircuitBreakerOpen
 	}
@@ -149,13 +149,13 @@ func (cb *CircuitBreaker) getState() CircuitBreakerState {
 func (cb *CircuitBreaker) GetMetrics() map[string]interface{} {
 	cb.mu.RLock()
 	defer cb.mu.RUnlock()
-	
+
 	return map[string]interface{}{
-		"state":            cb.state,
-		"failures":         cb.failures,
+		"state":             cb.state,
+		"failures":          cb.failures,
 		"failure_threshold": cb.failureThreshold,
-		"last_fail_time":   cb.lastFailTime,
-		"last_reset_time":  cb.lastResetTime,
+		"last_fail_time":    cb.lastFailTime,
+		"last_reset_time":   cb.lastResetTime,
 	}
 }
 
@@ -193,14 +193,14 @@ func (tw *TimeoutWrapper) Run(wctx WorkContext) WorkReport {
 
 	logger := wctx.Logger()
 	logger.Debug("Timeout wrapper executing action", "name", tw.name, "timeout", tw.timeout)
-	
+
 	// Create a context with timeout
 	ctx, cancel := context.WithTimeout(wctx.Context(), tw.timeout)
 	defer cancel()
-	
+
 	// Create a new work context with the timeout context
 	timeoutWctx := NewWorkContext(ctx)
-	
+
 	// Copy data from original context
 	if originalWctx, ok := wctx.(*DefaultWorkContext); ok {
 		originalWctx.mu.RLock()
@@ -209,10 +209,10 @@ func (tw *TimeoutWrapper) Run(wctx WorkContext) WorkReport {
 		}
 		originalWctx.mu.RUnlock()
 	}
-	
+
 	// Use a channel to capture the result
 	resultChan := make(chan WorkReport, 1)
-	
+
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
@@ -220,11 +220,11 @@ func (tw *TimeoutWrapper) Run(wctx WorkContext) WorkReport {
 				resultChan <- NewFailedWorkReport(fmt.Errorf("action panicked: %v", r))
 			}
 		}()
-		
+
 		result := tw.action.Run(timeoutWctx)
 		resultChan <- result
 	}()
-	
+
 	select {
 	case result := <-resultChan:
 		logger.Debug("Timeout wrapper action completed", "name", tw.name)
@@ -274,10 +274,10 @@ func (pec *ParallelErrorCollector) Run(wctx WorkContext) WorkReport {
 
 	logger := wctx.Logger()
 	logger.Debug("Starting parallel error collector", "type", constants.FlowTypeParallel, "name", pec.name, "actions", len(pec.actions))
-	
+
 	var wg sync.WaitGroup
 	resultChan := make(chan WorkReport, len(pec.actions))
-	
+
 	// Execute all actions in parallel
 	for i, action := range pec.actions {
 		wg.Add(1)
@@ -289,63 +289,63 @@ func (pec *ParallelErrorCollector) Run(wctx WorkContext) WorkReport {
 					resultChan <- NewFailedWorkReport(fmt.Errorf("action %d panicked: %v", index, r))
 				}
 			}()
-			
+
 			logger.Debug("Parallel error collector starting action", "name", pec.name, "index", index, "action", act.Name())
 			result := act.Run(wctx)
 			logger.Debug("Parallel error collector completed action", "name", pec.name, "index", index, "action", act.Name(), "status", result.Status)
 			resultChan <- result
 		}(i, action)
 	}
-	
+
 	// Wait for all actions to complete
 	wg.Wait()
 	close(resultChan)
-	
+
 	// Collect all results
 	var allErrors []error
 	var allEvents []interface{}
 	var allMetadata = make(map[string]interface{})
 	successCount := 0
-	
+
 	actionIndex := 0
 	for result := range resultChan {
 		if result.Status == StatusCompleted {
 			successCount++
 		}
-		
+
 		// Collect errors
 		allErrors = append(allErrors, result.Errors...)
-		
+
 		// Collect events
 		allEvents = append(allEvents, result.Events...)
-		
+
 		// Collect metadata with action prefix
 		for k, v := range result.Metadata {
 			allMetadata[fmt.Sprintf("action_%d_%s", actionIndex, k)] = v
 		}
 		actionIndex++
 	}
-	
+
 	// Add summary metadata
 	allMetadata["total_actions"] = len(pec.actions)
 	allMetadata["successful_actions"] = successCount
 	allMetadata["failed_actions"] = len(pec.actions) - successCount
 	allMetadata["total_errors"] = len(allErrors)
-	
+
 	logger.Debug("Completed parallel error collector", "type", constants.FlowTypeParallel, "name", pec.name, "successful", successCount, "total", len(pec.actions))
-	
+
 	// Determine overall status
 	finalReport := WorkReport{
 		Errors:   allErrors,
 		Events:   allEvents,
 		Metadata: allMetadata,
 	}
-	
+
 	if len(allErrors) == 0 {
 		finalReport.Status = StatusCompleted
 	} else {
 		finalReport.Status = StatusFailure
 	}
-	
+
 	return finalReport
 }

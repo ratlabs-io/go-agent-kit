@@ -22,17 +22,17 @@ func (ma *MockAction) Run(wctx WorkContext) WorkReport {
 	if ma.delay > 0 {
 		time.Sleep(ma.delay)
 	}
-	
+
 	if ma.shouldErr {
 		return NewFailedWorkReport(&MockError{Message: "mock error"})
 	}
-	
+
 	report := NewCompletedWorkReport()
 	report.Data = ma.result
-	
+
 	// Store result in context for chaining
 	wctx.Set(ma.name+"_result", ma.result)
-	
+
 	return report
 }
 
@@ -41,28 +41,28 @@ func TestSequentialFlow_Success(t *testing.T) {
 	action1 := &MockAction{name: "action1", result: "result1"}
 	action2 := &MockAction{name: "action2", result: "result2"}
 	action3 := &MockAction{name: "action3", result: "result3"}
-	
+
 	// Create sequential flow
 	flow := NewSequentialFlow("test-flow").
 		Then(action1).
 		Then(action2).
 		Then(action3)
-	
+
 	// Create context
 	ctx := NewWorkContext(context.Background())
-	
+
 	// Run flow
 	report := flow.Run(ctx)
-	
+
 	// Verify success
 	if report.Status != StatusCompleted {
 		t.Errorf("Expected StatusCompleted, got %v", report.Status)
 	}
-	
+
 	if len(report.Errors) != 0 {
 		t.Errorf("Expected no errors, got %v", report.Errors)
 	}
-	
+
 	// Verify all actions ran and stored results
 	if result, ok := ctx.Get("action1_result"); !ok || result != "result1" {
 		t.Errorf("Action1 result not found or incorrect")
@@ -80,28 +80,28 @@ func TestSequentialFlow_EarlyFailure(t *testing.T) {
 	action1 := &MockAction{name: "action1", result: "result1"}
 	action2 := &MockAction{name: "action2", shouldErr: true}
 	action3 := &MockAction{name: "action3", result: "result3"}
-	
+
 	// Create sequential flow
 	flow := NewSequentialFlow("test-flow").
 		Then(action1).
 		Then(action2).
 		Then(action3)
-	
+
 	// Create context
 	ctx := NewWorkContext(context.Background())
-	
+
 	// Run flow
 	report := flow.Run(ctx)
-	
+
 	// Verify failure
 	if report.Status != StatusFailure {
 		t.Errorf("Expected StatusFailure, got %v", report.Status)
 	}
-	
+
 	if len(report.Errors) == 0 {
 		t.Errorf("Expected errors, got none")
 	}
-	
+
 	// Verify only first action ran
 	if result, ok := ctx.Get("action1_result"); !ok || result != "result1" {
 		t.Errorf("Action1 result not found or incorrect")
@@ -117,18 +117,18 @@ func TestSequentialFlow_EarlyFailure(t *testing.T) {
 func TestSequentialFlow_EmptyFlow(t *testing.T) {
 	// Create empty flow
 	flow := NewSequentialFlow("empty-flow")
-	
+
 	// Create context
 	ctx := NewWorkContext(context.Background())
-	
+
 	// Run flow
 	report := flow.Run(ctx)
-	
+
 	// Verify success (empty flow should complete successfully)
 	if report.Status != StatusCompleted {
 		t.Errorf("Expected StatusCompleted for empty flow, got %v", report.Status)
 	}
-	
+
 	if len(report.Errors) != 0 {
 		t.Errorf("Expected no errors for empty flow, got %v", report.Errors)
 	}
@@ -136,7 +136,7 @@ func TestSequentialFlow_EmptyFlow(t *testing.T) {
 
 func TestSequentialFlow_Name(t *testing.T) {
 	flow := NewSequentialFlow("test-name")
-	
+
 	if flow.Name() != "test-name" {
 		t.Errorf("Expected name 'test-name', got '%s'", flow.Name())
 	}

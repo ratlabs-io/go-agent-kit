@@ -23,7 +23,7 @@ type TaskAnalysis struct {
 // StructuredJSONAgentWorkflow demonstrates how to get structured JSON responses from agents.
 func main() {
 	fmt.Println("=== Structured JSON Agent Workflow Example ===")
-	
+
 	// Get OpenAI API key from environment
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
@@ -31,18 +31,18 @@ func main() {
 		fmt.Println("Please set it with: export OPENAI_API_KEY=your-api-key-here")
 		os.Exit(1)
 	}
-	
+
 	// Create OpenAI client
 	llmClient := openai.NewClient(apiKey)
-	
+
 	// Example 1: Structured JSON with Schema
 	fmt.Println("\n--- Example 1: Task Analysis with JSON Schema ---")
 	runTaskAnalysisExample(llmClient)
-	
+
 	// Example 2: Generic JSON Response
 	fmt.Println("\n--- Example 2: Generic JSON Response ---")
 	runGenericJSONExample(llmClient)
-	
+
 	// Example 3: Multiple Analysis Workflow
 	fmt.Println("\n--- Example 3: Multi-Step Analysis Workflow ---")
 	runMultiStepAnalysisWorkflow(llmClient)
@@ -78,12 +78,12 @@ func runTaskAnalysisExample(llmClient llm.Client) {
 					"description": "List of requirements or steps needed",
 				},
 			},
-			"required": []string{"category", "complexity", "estimated_time", "requirements"},
+			"required":             []string{"category", "complexity", "estimated_time", "requirements"},
 			"additionalProperties": false,
 		},
 		Strict: true,
 	}
-	
+
 	// Create agent with JSON schema
 	// Note: JSON schema requires gpt-4o, gpt-4o-mini, or gpt-4-turbo-preview
 	// gpt-3.5-turbo only supports json_object, not json_schema
@@ -94,7 +94,7 @@ Consider the type of request, complexity level, time requirements, and necessary
 Be precise and realistic in your estimates.`).
 		WithJSONSchema(schema).
 		WithClient(llmClient)
-	
+
 	// Test with different types of inputs
 	testInputs := []string{
 		"Help me plan a vacation to Japan for 2 weeks",
@@ -102,15 +102,15 @@ Be precise and realistic in your estimates.`).
 		"I need to learn Python programming from scratch",
 		"Fix the bug in my authentication system that's causing login failures",
 	}
-	
+
 	for i, input := range testInputs {
 		fmt.Printf("\nInput %d: %s\n", i+1, input)
-		
+
 		ctx := workflow.NewWorkContext(context.Background())
 		ctx.Set("user_input", input)
-		
+
 		report := analysisAgent.Run(ctx)
-		
+
 		if report.Status == workflow.StatusCompleted {
 			if response, ok := report.Data.(*llm.CompletionResponse); ok {
 				// Parse the structured JSON response
@@ -139,14 +139,14 @@ func runGenericJSONExample(llmClient llm.Client) {
 Include fields like 'summary', 'key_points', 'recommendations', and any other relevant information.`).
 		WithJSONResponse().
 		WithClient(llmClient)
-	
+
 	ctx := workflow.NewWorkContext(context.Background())
 	ctx.Set("user_input", "I'm starting a new business selling handmade jewelry online")
-	
+
 	fmt.Println("Input: I'm starting a new business selling handmade jewelry online")
-	
+
 	report := jsonAgent.Run(ctx)
-	
+
 	if report.Status == workflow.StatusCompleted {
 		if response, ok := report.Data.(*llm.CompletionResponse); ok {
 			// Parse the generic JSON response
@@ -186,7 +186,7 @@ func runMultiStepAnalysisWorkflow(llmClient llm.Client) {
 							"description": map[string]interface{}{"type": "string"},
 							"priority":    map[string]interface{}{"type": "integer", "minimum": 1, "maximum": 5},
 						},
-						"required": []string{"name", "description", "priority"},
+						"required":             []string{"name", "description", "priority"},
 						"additionalProperties": false,
 					},
 				},
@@ -195,12 +195,12 @@ func runMultiStepAnalysisWorkflow(llmClient llm.Client) {
 					"description": "Total estimated time in hours",
 				},
 			},
-			"required": []string{"main_goal", "sub_tasks", "estimated_total_time"},
+			"required":             []string{"main_goal", "sub_tasks", "estimated_total_time"},
 			"additionalProperties": false,
 		},
 		Strict: true,
 	}
-	
+
 	// Step 2: Detailed planning with JSON schema
 	planningSchema := &llm.JSONSchema{
 		Name:        "detailed_plan",
@@ -217,7 +217,7 @@ func runMultiStepAnalysisWorkflow(llmClient llm.Client) {
 							"duration":     map[string]interface{}{"type": "string"},
 							"deliverables": map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}},
 						},
-						"required": []string{"phase_name", "duration", "deliverables"},
+						"required":             []string{"phase_name", "duration", "deliverables"},
 						"additionalProperties": false,
 					},
 				},
@@ -226,39 +226,39 @@ func runMultiStepAnalysisWorkflow(llmClient llm.Client) {
 					"items": map[string]interface{}{"type": "string"},
 				},
 			},
-			"required": []string{"execution_phases", "success_metrics"},
+			"required":             []string{"execution_phases", "success_metrics"},
 			"additionalProperties": false,
 		},
 		Strict: true,
 	}
-	
+
 	// Create agents
 	analysisAgent := agent.NewChatAgent("analyzer").
 		WithModel("gpt-4o-mini").
 		WithPrompt("Break down this complex task into manageable components with priorities.").
 		WithJSONSchema(initialSchema).
 		WithClient(llmClient)
-	
+
 	planningAgent := agent.NewChatAgent("planner").
 		WithModel("gpt-4o-mini").
 		WithPrompt("Create a detailed execution plan based on the analysis. Focus on phases, deliverables, and success metrics.").
 		WithJSONSchema(planningSchema).
 		WithClient(llmClient)
-	
+
 	// Create sequential workflow
 	planningWorkflow := workflow.NewSequentialFlow("project-planning").
 		Then(analysisAgent).
 		ThenChain(planningAgent) // Chain passes output from previous step as input
-	
+
 	// Execute workflow
 	ctx := workflow.NewWorkContext(context.Background())
 	ctx.Set("user_input", "Launch a mobile app for food delivery in my city")
-	
+
 	fmt.Println("Input: Launch a mobile app for food delivery in my city")
 	fmt.Println("Running multi-step analysis workflow...")
-	
+
 	report := planningWorkflow.Run(ctx)
-	
+
 	if report.Status == workflow.StatusCompleted {
 		// The final output will be from the planning agent
 		if response, ok := report.Data.(*llm.CompletionResponse); ok {
@@ -271,7 +271,7 @@ func runMultiStepAnalysisWorkflow(llmClient llm.Client) {
 				fmt.Println(string(prettyJSON))
 			}
 		}
-		
+
 		// Also show the intermediate analysis result if available
 		if analysisData, ok := ctx.Get("analyzer"); ok {
 			if analysisResponse, ok := analysisData.(*llm.CompletionResponse); ok {

@@ -74,60 +74,65 @@ func (mt *MCPTool) Execute(ctx context.Context, params map[string]interface{}) (
 			"arguments": params,
 		},
 	}
-	
+
 	// Marshal request
 	reqBody, err := json.Marshal(mcpRequest)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal MCP request: %w", err)
 	}
-	
+
 	// Create HTTP request
-	req, err := http.NewRequestWithContext(ctx, "POST", mt.client.server.URL, 
+	req, err := http.NewRequestWithContext(ctx, "POST", mt.client.server.URL,
 		bytes.NewReader(reqBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
 	}
-	
+
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	if mt.client.server.APIKey != "" {
 		req.Header.Set("Authorization", "Bearer "+mt.client.server.APIKey)
 	}
-	
+
 	// Make request
 	resp, err := mt.client.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("MCP request failed: %w", err)
 	}
-	defer resp.Body.Close()
-	
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			// Log error but don't fail the request
+			_ = err // Silently ignore close errors
+		}
+	}()
+
 	// Read response
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read MCP response: %w", err)
 	}
-	
+
 	// Check status
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("MCP server returned status %d: %s", resp.StatusCode, string(body))
 	}
-	
+
 	// Parse response
 	var mcpResponse map[string]interface{}
 	if err := json.Unmarshal(body, &mcpResponse); err != nil {
 		return nil, fmt.Errorf("failed to parse MCP response: %w", err)
 	}
-	
+
 	// Extract result
 	if result, ok := mcpResponse["result"]; ok {
 		return result, nil
 	}
-	
+
 	// Check for errors
 	if mcpErr, ok := mcpResponse["error"]; ok {
 		return nil, fmt.Errorf("MCP tool execution failed: %v", mcpErr)
 	}
-	
+
 	return mcpResponse, nil
 }
 
@@ -138,71 +143,76 @@ func (mc *MCPClient) ListTools(ctx context.Context) ([]Tool, error) {
 		"method": "tools/list",
 		"params": map[string]interface{}{},
 	}
-	
+
 	// Marshal request
 	reqBody, err := json.Marshal(mcpRequest)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal MCP list request: %w", err)
 	}
-	
+
 	// Create HTTP request
-	req, err := http.NewRequestWithContext(ctx, "POST", mc.server.URL, 
+	req, err := http.NewRequestWithContext(ctx, "POST", mc.server.URL,
 		bytes.NewReader(reqBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
 	}
-	
+
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	if mc.server.APIKey != "" {
 		req.Header.Set("Authorization", "Bearer "+mc.server.APIKey)
 	}
-	
+
 	// Make request
 	resp, err := mc.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("MCP list request failed: %w", err)
 	}
-	defer resp.Body.Close()
-	
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			// Log error but don't fail the request
+			_ = err // Silently ignore close errors
+		}
+	}()
+
 	// Read response
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read MCP response: %w", err)
 	}
-	
+
 	// Check status
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("MCP server returned status %d: %s", resp.StatusCode, string(body))
 	}
-	
+
 	// Parse response
 	var mcpResponse map[string]interface{}
 	if err := json.Unmarshal(body, &mcpResponse); err != nil {
 		return nil, fmt.Errorf("failed to parse MCP response: %w", err)
 	}
-	
+
 	// Extract tools
 	result, ok := mcpResponse["result"]
 	if !ok {
 		return nil, fmt.Errorf("MCP response missing result field")
 	}
-	
+
 	resultMap, ok := result.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("MCP result is not an object")
 	}
-	
+
 	toolsData, ok := resultMap["tools"]
 	if !ok {
 		return nil, fmt.Errorf("MCP result missing tools field")
 	}
-	
+
 	toolsList, ok := toolsData.([]interface{})
 	if !ok {
 		return nil, fmt.Errorf("MCP tools field is not an array")
 	}
-	
+
 	// Convert to Tool instances
 	var tools []Tool
 	for _, toolData := range toolsList {
@@ -210,10 +220,10 @@ func (mc *MCPClient) ListTools(ctx context.Context) ([]Tool, error) {
 		if !ok {
 			continue
 		}
-		
+
 		name, _ := toolMap["name"].(string)
 		description, _ := toolMap["description"].(string)
-		
+
 		// Parse schema if available
 		schema := Schema{
 			Type:        "object",
@@ -221,7 +231,7 @@ func (mc *MCPClient) ListTools(ctx context.Context) ([]Tool, error) {
 			Properties:  map[string]interface{}{},
 			Required:    []string{},
 		}
-		
+
 		if schemaData, ok := toolMap["schema"].(map[string]interface{}); ok {
 			// Convert schema data
 			if schemaType, ok := schemaData["type"].(string); ok {
@@ -238,9 +248,9 @@ func (mc *MCPClient) ListTools(ctx context.Context) ([]Tool, error) {
 				}
 			}
 		}
-		
+
 		tools = append(tools, NewMCPTool(mc, name, description, schema))
 	}
-	
+
 	return tools, nil
 }

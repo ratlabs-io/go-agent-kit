@@ -10,7 +10,7 @@ import (
 
 // Client implements the llm.Client interface using the gollm library.
 // This is an example implementation - users can use this or create their own.
-// 
+//
 // To use this, add to your go.mod:
 // require github.com/teilomillet/gollm v0.1.9
 type Client struct {
@@ -26,7 +26,7 @@ func NewClient(provider, model string) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gollm instance: %w", err)
 	}
-	
+
 	return &Client{
 		llm: llmInstance,
 	}, nil
@@ -38,7 +38,7 @@ func NewClientWithOptions(opts ...gollm.ConfigOption) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gollm instance: %w", err)
 	}
-	
+
 	return &Client{
 		llm: llmInstance,
 	}, nil
@@ -48,7 +48,7 @@ func NewClientWithOptions(opts ...gollm.ConfigOption) (*Client, error) {
 func (c *Client) Complete(ctx context.Context, req llm.CompletionRequest) (*llm.CompletionResponse, error) {
 	// For now, we'll do a simple generation
 	// TODO: Enhance with proper tool calling integration when gollm supports it
-	
+
 	var prompt string
 	if len(req.Messages) > 0 {
 		// Convert messages to a simple prompt
@@ -59,15 +59,15 @@ func (c *Client) Complete(ctx context.Context, req llm.CompletionRequest) (*llm.
 	} else {
 		prompt = req.Prompt
 	}
-	
+
 	// Create gollm prompt
 	gollmPrompt := c.llm.NewPrompt(prompt)
-	
+
 	response, err := c.llm.Generate(ctx, gollmPrompt)
 	if err != nil {
 		return nil, fmt.Errorf("gollm generation failed: %w", err)
 	}
-	
+
 	return &llm.CompletionResponse{
 		Content: response,
 		Usage: llm.Usage{

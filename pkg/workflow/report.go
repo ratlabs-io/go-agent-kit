@@ -17,9 +17,9 @@ const (
 type WorkReport struct {
 	Status   WorkStatus
 	Errors   []error
-	Data     interface{}                // Generic data payload
-	Events   []interface{}              // Events to publish (will be typed when events package is added)
-	Metadata map[string]interface{}     // Agent metadata (token usage, timing, etc.)
+	Data     interface{}            // Generic data payload
+	Events   []interface{}          // Events to publish (will be typed when events package is added)
+	Metadata map[string]interface{} // Agent metadata (token usage, timing, etc.)
 }
 
 // NewCompletedWorkReport returns a WorkReport with a StatusCompleted status.

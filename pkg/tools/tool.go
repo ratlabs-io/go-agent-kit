@@ -18,10 +18,10 @@ type Schema struct {
 type SimpleTool interface {
 	// Name returns the unique name of the tool.
 	Name() string
-	
+
 	// Description returns a human-readable description of what the tool does.
 	Description() string
-	
+
 	// Execute runs the tool with the given parameters and returns the result.
 	// The params will be automatically validated against the tool's parameter struct.
 	Execute(ctx context.Context, params map[string]interface{}) (interface{}, error)
@@ -33,13 +33,13 @@ type SimpleTool interface {
 type Tool interface {
 	// Name returns the unique name of the tool.
 	Name() string
-	
+
 	// Description returns a human-readable description of what the tool does.
 	Description() string
-	
+
 	// Parameters returns the JSON Schema for the tool's parameters.
 	Parameters() Schema
-	
+
 	// Execute runs the tool with the given parameters and returns the result.
 	Execute(ctx context.Context, params map[string]interface{}) (interface{}, error)
 }
@@ -48,13 +48,13 @@ type Tool interface {
 type ToolRegistry interface {
 	// Register adds a tool to the registry.
 	Register(tool Tool) error
-	
+
 	// Get retrieves a tool by name.
 	Get(name string) (Tool, bool)
-	
+
 	// List returns all registered tools.
 	List() []Tool
-	
+
 	// Unregister removes a tool from the registry.
 	Unregister(name string) error
 }
@@ -71,15 +71,15 @@ func (tr *ToolResult) MarshalJSON() ([]byte, error) {
 	result := map[string]interface{}{
 		"data": tr.Data,
 	}
-	
+
 	if tr.Error != nil {
 		result["error"] = tr.Error.Error()
 	}
-	
+
 	if tr.Metadata != nil {
 		result["metadata"] = tr.Metadata
 	}
-	
+
 	return json.Marshal(result)
 }
 
