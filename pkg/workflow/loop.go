@@ -33,19 +33,19 @@ func NewLoop(name string, count int) *Loop {
 }
 
 // NewLoopWhile creates a conditional loop that continues while the condition returns true.
-func NewLoopWhile(name string, conditionFunc Predicate) *Loop {
+func NewLoopWhile(name string, condition Predicate) *Loop {
 	return &Loop{
 		name:        name,
-		whileFunc:   conditionFunc,
+		whileFunc:   condition,
 		isWhileLoop: true,
 	}
 }
 
 // NewLoopUntil creates a conditional loop that continues until the condition returns true.
-func NewLoopUntil(name string, conditionFunc Predicate) *Loop {
+func NewLoopUntil(name string, condition Predicate) *Loop {
 	return &Loop{
 		name:        name,
-		untilFunc:   conditionFunc,
+		untilFunc:   condition,
 		isUntilLoop: true,
 	}
 }

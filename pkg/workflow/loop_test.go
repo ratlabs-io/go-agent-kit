@@ -92,11 +92,11 @@ func TestLoop_CountLoop_WithFailure(t *testing.T) {
 }
 
 func TestNewLoopWhile(t *testing.T) {
-	conditionFunc := func(wctx WorkContext) (bool, error) {
+	condition := func(wctx WorkContext) (bool, error) {
 		return true, nil
 	}
 	
-	loop := NewLoopWhile("while-loop", conditionFunc)
+	loop := NewLoopWhile("while-loop", condition)
 	
 	if loop.name != "while-loop" {
 		t.Errorf("Expected name 'while-loop', got '%s'", loop.name)
@@ -112,12 +112,12 @@ func TestLoop_WhileLoop(t *testing.T) {
 	action := &mockLoopAction{name: "while-action"}
 	
 	// Create a condition that stops after 2 executions
-	conditionFunc := func(wctx WorkContext) (bool, error) {
+	condition := func(wctx WorkContext) (bool, error) {
 		// Check executions directly since the condition is checked before setting the iteration
 		return action.executions < 2, nil
 	}
 	
-	loop := NewLoopWhile("while-loop", conditionFunc).WithAction(action)
+	loop := NewLoopWhile("while-loop", condition).WithAction(action)
 	report := loop.Run(wctx)
 	
 	if report.Status != StatusCompleted {
@@ -130,11 +130,11 @@ func TestLoop_WhileLoop(t *testing.T) {
 }
 
 func TestNewLoopUntil(t *testing.T) {
-	conditionFunc := func(wctx WorkContext) (bool, error) {
+	condition := func(wctx WorkContext) (bool, error) {
 		return false, nil
 	}
 	
-	loop := NewLoopUntil("until-loop", conditionFunc)
+	loop := NewLoopUntil("until-loop", condition)
 	
 	if loop.name != "until-loop" {
 		t.Errorf("Expected name 'until-loop', got '%s'", loop.name)
@@ -150,7 +150,7 @@ func TestLoop_UntilLoop(t *testing.T) {
 	action := &mockLoopAction{name: "until-action"}
 	
 	// Create a condition that returns true after 3 iterations
-	conditionFunc := func(wctx WorkContext) (bool, error) {
+	condition := func(wctx WorkContext) (bool, error) {
 		iter, _ := wctx.Get(constants.KeyLoopIteration)
 		if iter == nil {
 			return false, nil
@@ -158,7 +158,7 @@ func TestLoop_UntilLoop(t *testing.T) {
 		return iter.(int) >= 3, nil
 	}
 	
-	loop := NewLoopUntil("until-loop", conditionFunc).WithAction(action)
+	loop := NewLoopUntil("until-loop", condition).WithAction(action)
 	report := loop.Run(wctx)
 	
 	if report.Status != StatusCompleted {
@@ -256,11 +256,11 @@ func TestLoop_InfiniteLoopProtection(t *testing.T) {
 	action := &mockLoopAction{name: "infinite-action"}
 	
 	// Create a condition that always returns true
-	conditionFunc := func(wctx WorkContext) (bool, error) {
+	condition := func(wctx WorkContext) (bool, error) {
 		return true, nil
 	}
 	
-	loop := NewLoopWhile("infinite-loop", conditionFunc).WithAction(action)
+	loop := NewLoopWhile("infinite-loop", condition).WithAction(action)
 	report := loop.Run(wctx)
 	
 	if report.Status != StatusFailure {
