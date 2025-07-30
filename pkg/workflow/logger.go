@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 	"os"
+
+	"github.com/ratlabs-io/go-agent-kit/pkg/constants"
 )
 
 // Logger defines the interface for logging within the workflow system.
@@ -103,7 +105,7 @@ func GetDefaultLogger() Logger {
 
 // LoggerFromContext extracts a logger from context, falling back to default if not present
 func LoggerFromContext(ctx context.Context) Logger {
-	if logger, ok := ctx.Value("logger").(Logger); ok {
+	if logger, ok := ctx.Value(constants.KeyLogger).(Logger); ok {
 		return logger
 	}
 	return defaultLogger
@@ -111,5 +113,5 @@ func LoggerFromContext(ctx context.Context) Logger {
 
 // WithLogger adds a logger to the context
 func WithLogger(ctx context.Context, logger Logger) context.Context {
-	return context.WithValue(ctx, "logger", logger)
+	return context.WithValue(ctx, constants.KeyLogger, logger)
 }

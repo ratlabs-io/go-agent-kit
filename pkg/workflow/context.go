@@ -3,6 +3,8 @@ package workflow
 import (
 	"context"
 	"sync"
+
+	"github.com/ratlabs-io/go-agent-kit/pkg/constants"
 )
 
 // WorkContext provides a synchronized context for sharing data between actions in a workflow.
@@ -48,7 +50,7 @@ func NewWorkContextWithCallbacks(ctx context.Context, callbacks *CallbackRegistr
 	}
 	
 	// Store a reference to this WorkContext in the context for event emission
-	wc.ctx = context.WithValue(wc.ctx, "work_context", wc)
+	wc.ctx = context.WithValue(wc.ctx, constants.KeyWorkContext, wc)
 	
 	return wc
 }

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/ratlabs-io/go-agent-kit/pkg/constants"
 	"github.com/ratlabs-io/go-agent-kit/pkg/llm"
 	"github.com/ratlabs-io/go-agent-kit/pkg/tools"
 	"github.com/ratlabs-io/go-agent-kit/pkg/workflow"
@@ -191,7 +192,7 @@ func (ta *ToolAgent) executeSimpleToolCalling(wctx workflow.WorkContext, startTi
 	
 	// Check for runtime message history in context
 	var messageHistory []llm.Message
-	if runtimeHistory, ok := wctx.Get("message_history"); ok {
+	if runtimeHistory, ok := wctx.Get(constants.KeyMessageHistory); ok {
 		if historySlice, ok := runtimeHistory.([]llm.Message); ok {
 			messageHistory = historySlice
 		}
@@ -207,34 +208,30 @@ func (ta *ToolAgent) executeSimpleToolCalling(wctx workflow.WorkContext, startTi
 		// Check if system prompt already exists in history
 		systemPromptExists := false
 		for _, msg := range messageHistory {
-			if msg.Role == "system" && msg.Content == ta.prompt {
+			if msg.Role == constants.RoleSystem && msg.Content == ta.prompt {
 				systemPromptExists = true
 				break
 			}
 		}
 		if !systemPromptExists {
 			messages = append(messages, llm.Message{
-				Role:    "system",
+				Role:    constants.RoleSystem,
 				Content: ta.prompt,
 			})
 		}
 	}
 	
-	// Check for user input in context (check both "user_input" and "task" for compatibility)
+	// Check for user input in context
 	userInput := ""
-	if input, ok := wctx.Get("user_input"); ok {
+	if input, ok := wctx.Get(constants.KeyUserInput); ok {
 		if inputStr, ok := input.(string); ok && inputStr != "" {
 			userInput = inputStr
-		}
-	} else if task, ok := wctx.Get("task"); ok {
-		if taskStr, ok := task.(string); ok && taskStr != "" {
-			userInput = taskStr
 		}
 	}
 	
 	if userInput != "" {
 		messages = append(messages, llm.Message{
-			Role:    "user",
+			Role:    constants.RoleUser,
 			Content: userInput,
 		})
 	}
@@ -275,7 +272,7 @@ func (ta *ToolAgent) executeSimpleToolCalling(wctx workflow.WorkContext, startTi
 	ta.log.Info("simple tool calling completed", "elapsed", elapsed, "tokens", response.Usage.TotalTokens)
 	
 	// Wait for callbacks to complete if WorkContext supports waiting
-	if ctxValue := wctx.Context().Value("work_context"); ctxValue != nil {
+	if ctxValue := wctx.Context().Value(constants.KeyWorkContext); ctxValue != nil {
 		if workCtx, ok := ctxValue.(workflow.WorkContext); ok {
 			workCtx.Wait()
 		}

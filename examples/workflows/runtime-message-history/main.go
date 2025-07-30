@@ -7,6 +7,7 @@ import (
 
 	"github.com/ratlabs-io/go-agent-kit/examples/integrations/openai"
 	"github.com/ratlabs-io/go-agent-kit/pkg/agent"
+	"github.com/ratlabs-io/go-agent-kit/pkg/constants"
 	"github.com/ratlabs-io/go-agent-kit/pkg/llm"
 	"github.com/ratlabs-io/go-agent-kit/pkg/workflow"
 )
@@ -56,8 +57,8 @@ func runRuntimeChatHistory(llmClient llm.Client) {
 	
 	// Create workflow context and set history at runtime
 	ctx := workflow.NewWorkContext(context.Background())
-	ctx.Set("message_history", conversationHistory) // Runtime history loading
-	ctx.Set("user_input", "How many days should I spend in each city?")
+	ctx.Set(constants.KeyMessageHistory, conversationHistory) // Runtime history loading
+	ctx.Set(constants.KeyUserInput, "How many days should I spend in each city?")
 	
 	fmt.Println("Loaded conversation history at runtime:")
 	for _, msg := range conversationHistory {
@@ -95,8 +96,8 @@ func runConversationSession(llmClient llm.Client) {
 	// First interaction
 	fmt.Println("\n--- Turn 1 ---")
 	ctx1 := workflow.NewWorkContext(context.Background())
-	ctx1.Set("message_history", sessionHistory)
-	ctx1.Set("user_input", "What's a good recipe for beginners?")
+	ctx1.Set(constants.KeyMessageHistory, sessionHistory)
+	ctx1.Set(constants.KeyUserInput, "What's a good recipe for beginners?")
 	
 	fmt.Println("User: What's a good recipe for beginners?")
 	report1 := chatAgent.Run(ctx1)
@@ -118,8 +119,8 @@ func runConversationSession(llmClient llm.Client) {
 	// Second interaction with updated history
 	fmt.Println("\n--- Turn 2 ---")
 	ctx2 := workflow.NewWorkContext(context.Background())
-	ctx2.Set("message_history", sessionHistory) // Load updated history
-	ctx2.Set("user_input", "Can you give me the ingredients list?")
+	ctx2.Set(constants.KeyMessageHistory, sessionHistory) // Load updated history
+	ctx2.Set(constants.KeyUserInput, "Can you give me the ingredients list?")
 	
 	fmt.Println("User: Can you give me the ingredients list?")
 	report2 := chatAgent.Run(ctx2)
@@ -158,8 +159,8 @@ func runDynamicHistoryUpdates(llmClient llm.Client) {
 		
 		// Create context with current history
 		ctx := workflow.NewWorkContext(context.Background())
-		ctx.Set("message_history", history)
-		ctx.Set("user_input", userInput)
+		ctx.Set(constants.KeyMessageHistory, history)
+		ctx.Set(constants.KeyUserInput, userInput)
 		
 		fmt.Printf("User: %s\n", userInput)
 		

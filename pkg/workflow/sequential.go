@@ -3,6 +3,8 @@ package workflow
 import (
 	"fmt"
 	"time"
+
+	"github.com/ratlabs-io/go-agent-kit/pkg/constants"
 )
 
 // SequentialFlow is an action that executes a series of actions in order.
@@ -45,8 +47,8 @@ func (sf *SequentialFlow) Execute(action Action) *SequentialFlow {
 func (sf *SequentialFlow) ThenChain(action Action) *SequentialFlow {
 	chainAction := NewActionFunc(action.Name()+"_chain", func(ctx WorkContext) WorkReport {
 		// Get previous output and set as user_input
-		if prevOutput, ok := ctx.Get("previous_output"); ok {
-			ctx.Set("user_input", prevOutput)
+		if prevOutput, ok := ctx.Get(constants.KeyPreviousOutput); ok {
+			ctx.Set(constants.KeyUserInput, prevOutput)
 		}
 		
 		// Run the action
@@ -58,7 +60,7 @@ func (sf *SequentialFlow) ThenChain(action Action) *SequentialFlow {
 		// Store this action's output for the next action
 		if report.Data != nil {
 			content := extractContent(report.Data)
-			ctx.Set("previous_output", content)
+			ctx.Set(constants.KeyPreviousOutput, content)
 		}
 		
 		return report
@@ -72,23 +74,23 @@ func (sf *SequentialFlow) ThenChain(action Action) *SequentialFlow {
 func (sf *SequentialFlow) ThenAccumulate(action Action) *SequentialFlow {
 	accumulateAction := NewActionFunc(action.Name()+"_accumulate", func(ctx WorkContext) WorkReport {
 		// Get original input if not already stored
-		if _, ok := ctx.Get("original_input"); !ok {
-			if userInput, exists := ctx.Get("user_input"); exists {
-				ctx.Set("original_input", userInput)
+		if _, ok := ctx.Get(constants.KeyOriginalInput); !ok {
+			if userInput, exists := ctx.Get(constants.KeyUserInput); exists {
+				ctx.Set(constants.KeyOriginalInput, userInput)
 			}
 		}
 		
 		// Build accumulated input
 		var accumulated string
-		if original, ok := ctx.Get("original_input"); ok {
+		if original, ok := ctx.Get(constants.KeyOriginalInput); ok {
 			accumulated = fmt.Sprintf("Original request: %v", original)
 		}
 		
-		if prevOutput, ok := ctx.Get("previous_output"); ok {
+		if prevOutput, ok := ctx.Get(constants.KeyPreviousOutput); ok {
 			accumulated += fmt.Sprintf("\n\nPrevious output: %v", prevOutput)
 		}
 		
-		ctx.Set("user_input", accumulated)
+		ctx.Set(constants.KeyUserInput, accumulated)
 		
 		// Run the action
 		report := action.Run(ctx)
@@ -99,7 +101,7 @@ func (sf *SequentialFlow) ThenAccumulate(action Action) *SequentialFlow {
 		// Store this action's output for the next action
 		if report.Data != nil {
 			content := extractContent(report.Data)
-			ctx.Set("previous_output", content)
+			ctx.Set(constants.KeyPreviousOutput, content)
 		}
 		
 		return report
@@ -145,7 +147,7 @@ func (sf *SequentialFlow) Run(wctx WorkContext) WorkReport {
 		// Store action output for potential chaining
 		if actionReport.Data != nil {
 			content := extractContent(actionReport.Data)
-			wctx.Set("previous_output", content)
+			wctx.Set(constants.KeyPreviousOutput, content)
 			// For the last successful action, preserve its data
 			report.Data = actionReport.Data
 		}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/ratlabs-io/go-agent-kit/examples/integrations/openai"
 	"github.com/ratlabs-io/go-agent-kit/pkg/agent"
+	"github.com/ratlabs-io/go-agent-kit/pkg/constants"
 	"github.com/ratlabs-io/go-agent-kit/pkg/llm"
 	"github.com/ratlabs-io/go-agent-kit/pkg/tools"
 	"github.com/ratlabs-io/go-agent-kit/pkg/workflow"
@@ -61,8 +62,8 @@ func runBasicChatWithHistory(llmClient llm.Client) {
 	
 	// Continue the conversation with runtime history
 	ctx := workflow.NewWorkContext(context.Background())
-	ctx.Set("message_history", messageHistory) // Load history at runtime
-	ctx.Set("user_input", "What are some must-see places in Kyoto?")
+	ctx.Set(constants.KeyMessageHistory, messageHistory) // Load history at runtime
+	ctx.Set(constants.KeyUserInput, "What are some must-see places in Kyoto?")
 	
 	fmt.Println("Previous conversation:")
 	for _, msg := range messageHistory {
@@ -104,8 +105,8 @@ func runToolAgentWithHistory(llmClient llm.Client) {
 		WithTools(mathTool)
 	
 	ctx := workflow.NewWorkContext(context.Background())
-	ctx.Set("message_history", toolHistory) // Load history at runtime
-	ctx.Set("user_input", "If I save 20% of my remaining budget, how much would that be?")
+	ctx.Set(constants.KeyMessageHistory, toolHistory) // Load history at runtime
+	ctx.Set(constants.KeyUserInput, "If I save 20% of my remaining budget, how much would that be?")
 	
 	fmt.Println("Previous conversation:")
 	for _, msg := range toolHistory {
@@ -150,8 +151,8 @@ func runRuntimeHistoryExample(llmClient llm.Client) {
 	
 	// Create context and set history at RUNTIME
 	ctx := workflow.NewWorkContext(context.Background())
-	ctx.Set("message_history", customerHistory) // Runtime history loading
-	ctx.Set("user_input", "How long will the replacement take to arrive?")
+	ctx.Set(constants.KeyMessageHistory, customerHistory) // Runtime history loading
+	ctx.Set(constants.KeyUserInput, "How long will the replacement take to arrive?")
 	
 	fmt.Println("\nContinuing conversation with runtime-loaded history...")
 	fmt.Println("User: How long will the replacement take to arrive?")
@@ -194,8 +195,8 @@ func runMultiTurnConversation(llmClient llm.Client) {
 		
 		// Create context for this turn with current history
 		ctx := workflow.NewWorkContext(context.Background())
-		ctx.Set("message_history", history) // Load current history at runtime
-		ctx.Set("user_input", question)
+		ctx.Set(constants.KeyMessageHistory, history) // Load current history at runtime
+		ctx.Set(constants.KeyUserInput, question)
 		
 		// Run the agent
 		report := cookingAgent.Run(ctx)

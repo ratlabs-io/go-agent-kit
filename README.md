@@ -37,6 +37,7 @@ import (
     
     "github.com/ratlabs-io/go-agent-kit/examples/integrations/openai"
     "github.com/ratlabs-io/go-agent-kit/pkg/agent"
+    "github.com/ratlabs-io/go-agent-kit/pkg/constants"
     "github.com/ratlabs-io/go-agent-kit/pkg/workflow"
 )
 
@@ -52,7 +53,7 @@ func main() {
     
     // Create workflow context
     ctx := workflow.NewWorkContext(context.Background())
-    ctx.Set("user_input", "What is the capital of France?")
+    ctx.Set(constants.KeyUserInput, "What is the capital of France?")
     
     // Run agent
     report := chatAgent.Run(ctx)
@@ -75,8 +76,8 @@ chatAgent := agent.NewChatAgent("assistant").
 conversationHistory := loadConversationFromDatabase(sessionID)
 
 ctx := workflow.NewWorkContext(context.Background())
-ctx.Set("message_history", conversationHistory) // Load history at runtime
-ctx.Set("user_input", "Continue our conversation...")
+ctx.Set(constants.KeyMessageHistory, conversationHistory) // Load history at runtime
+ctx.Set(constants.KeyUserInput, "Continue our conversation...")
 
 // The agent will use the runtime-loaded conversation context
 report := chatAgent.Run(ctx)
@@ -109,7 +110,7 @@ pipeline := workflow.NewSequentialFlow("research-pipeline").
 
 // Execute workflow
 ctx := workflow.NewWorkContext(context.Background())
-ctx.Set("user_input", "Benefits of renewable energy")
+ctx.Set(constants.KeyUserInput, "Benefits of renewable energy")
 report := pipeline.Run(ctx)
 ```
 
@@ -130,7 +131,7 @@ toolAgent := agent.NewToolAgent("calculator").
     WithTools(mathTool, echoTool)
 
 ctx := workflow.NewWorkContext(context.Background())
-ctx.Set("user_input", "Calculate 15 * 23 and echo the result")
+ctx.Set(constants.KeyUserInput, "Calculate 15 * 23 and echo the result")
 report := toolAgent.Run(ctx)
 ```
 
@@ -151,8 +152,8 @@ conversationHistory := []llm.Message{
 }
 
 ctx := workflow.NewWorkContext(context.Background())
-ctx.Set("message_history", conversationHistory) // Load at runtime
-ctx.Set("user_input", "Now multiply that result by 5")
+ctx.Set(constants.KeyMessageHistory, conversationHistory) // Load at runtime
+ctx.Set(constants.KeyUserInput, "Now multiply that result by 5")
 
 // Tool agent will use tools with full conversation context
 report := toolAgent.Run(ctx)
@@ -204,7 +205,7 @@ jsonAgent := agent.NewChatAgent("analyzer").
     WithClient(llmClient)
 
 ctx := workflow.NewWorkContext(context.Background())
-ctx.Set("user_input", "Help me plan a vacation to Japan")
+ctx.Set(constants.KeyUserInput, "Help me plan a vacation to Japan")
 report := jsonAgent.Run(ctx)
 
 // Response will be valid JSON matching the schema
@@ -434,7 +435,7 @@ callbacks.Add(func(ctx context.Context, event workflow.Event) {
 
 // Create work context with callbacks
 workCtx := workflow.NewWorkContextWithCallbacks(context.Background(), callbacks)
-workCtx.Set("user_input", "Your question here")
+workCtx.Set(constants.KeyUserInput, "Your question here")
 
 // Run agent - events will be emitted to callbacks
 report := chatAgent.Run(workCtx)

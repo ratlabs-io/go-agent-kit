@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ratlabs-io/go-agent-kit/pkg/constants"
 	"github.com/ratlabs-io/go-agent-kit/pkg/llm"
 	"github.com/ratlabs-io/go-agent-kit/pkg/tools"
 	"github.com/ratlabs-io/go-agent-kit/pkg/workflow"
@@ -125,7 +126,7 @@ func (ca *ChatAgent) Run(wctx workflow.WorkContext) workflow.WorkReport {
 	
 	// Check for runtime message history in context
 	var messageHistory []llm.Message
-	if runtimeHistory, ok := wctx.Get("message_history"); ok {
+	if runtimeHistory, ok := wctx.Get(constants.KeyMessageHistory); ok {
 		if historySlice, ok := runtimeHistory.([]llm.Message); ok {
 			messageHistory = historySlice
 		}
@@ -141,24 +142,24 @@ func (ca *ChatAgent) Run(wctx workflow.WorkContext) workflow.WorkReport {
 		// Check if system prompt already exists in history
 		systemPromptExists := false
 		for _, msg := range messageHistory {
-			if msg.Role == "system" && msg.Content == ca.prompt {
+			if msg.Role == constants.RoleSystem && msg.Content == ca.prompt {
 				systemPromptExists = true
 				break
 			}
 		}
 		if !systemPromptExists {
 			messages = append(messages, llm.Message{
-				Role:    "system",
+				Role:    constants.RoleSystem,
 				Content: ca.prompt,
 			})
 		}
 	}
 	
 	// Check for user input in context
-	if userInput, ok := wctx.Get("user_input"); ok {
+	if userInput, ok := wctx.Get(constants.KeyUserInput); ok {
 		if userInputStr, ok := userInput.(string); ok && userInputStr != "" {
 			messages = append(messages, llm.Message{
-				Role:    "user", 
+				Role:    constants.RoleUser, 
 				Content: userInputStr,
 			})
 		}
@@ -201,7 +202,7 @@ func (ca *ChatAgent) Run(wctx workflow.WorkContext) workflow.WorkReport {
 	
 	// Emit event if WorkContext supports events
 	// Check if this WorkContext has event capabilities by looking at the context value
-	if ctxValue := wctx.Context().Value("work_context"); ctxValue != nil {
+	if ctxValue := wctx.Context().Value(constants.KeyWorkContext); ctxValue != nil {
 		if workCtx, ok := ctxValue.(workflow.WorkContext); ok {
 			event := workflow.Event{
 				Type:      workflow.EventAgentCompleted,
@@ -224,7 +225,7 @@ func (ca *ChatAgent) Run(wctx workflow.WorkContext) workflow.WorkReport {
 	report.SetMetadata("token_usage", response.Usage)
 	
 	// Wait for callbacks to complete if WorkContext supports waiting
-	if ctxValue := wctx.Context().Value("work_context"); ctxValue != nil {
+	if ctxValue := wctx.Context().Value(constants.KeyWorkContext); ctxValue != nil {
 		if workCtx, ok := ctxValue.(workflow.WorkContext); ok {
 			workCtx.Wait()
 		}
