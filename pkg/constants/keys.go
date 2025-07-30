@@ -22,6 +22,20 @@ const (
 	// KeyOriginalInput is the key for storing the original user input.
 	// Used by accumulating workflows to preserve the initial user message.
 	KeyOriginalInput = "original_input"
+	
+	// Loop Context Keys - used by loop constructs
+	
+	// KeyCurrentItem is the key for the current item in an iterator loop.
+	// Used by NewLoopOver to provide access to the current item being processed.
+	KeyCurrentItem = "current_item"
+	
+	// KeyCurrentIndex is the key for the current index in an iterator loop.
+	// Used by NewLoopOver to provide access to the current zero-based index.
+	KeyCurrentIndex = "current_index"
+	
+	// KeyLoopIteration is the key for the current iteration number.
+	// Used by all loop constructs to track the current iteration (1-based).
+	KeyLoopIteration = "loop_iteration"
 )
 
 const (
@@ -82,6 +96,15 @@ const (
 	
 	// FlowTypeSwitch identifies switch-based workflow execution.
 	FlowTypeSwitch = "SwitchFlow"
+	
+	// FlowTypeLoop identifies loop-based workflow execution.
+	FlowTypeLoop = "LoopFlow"
+	
+	// FlowTypeRetry identifies retry-based workflow execution.
+	FlowTypeRetry = "RetryFlow"
+	
+	// FlowTypeTryCatch identifies try-catch workflow execution.
+	FlowTypeTryCatch = "TryCatchFlow"
 )
 
 const (
