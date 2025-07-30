@@ -14,17 +14,18 @@ import (
 // ToolAgent represents an agent that can use tools and may execute internal workflows
 // for multi-step tool execution. It implements the Agent interface.
 type ToolAgent struct {
-	name         string
-	agentType    AgentType
-	model        string
-	prompt       string
-	tools        []tools.Tool
-	client       llm.Client
-	toolFlow     workflow.Action // Internal workflow for complex tool execution
-	maxToolCalls int            // Maximum number of tool calls per execution
-	jsonSchema   *llm.JSONSchema
-	responseType llm.ResponseType
-	log          *slog.Logger
+	name           string
+	agentType      AgentType
+	model          string
+	prompt         string
+	tools          []tools.Tool
+	client         llm.Client
+	toolFlow       workflow.Action // Internal workflow for complex tool execution
+	maxToolCalls   int            // Maximum number of tool calls per execution
+	jsonSchema     *llm.JSONSchema
+	responseType   llm.ResponseType
+	log            *slog.Logger
+	messageHistory []llm.Message
 }
 
 // NewToolAgent creates a new ToolAgent with the given name.
@@ -127,6 +128,12 @@ func (ta *ToolAgent) WithResponseType(responseType llm.ResponseType) *ToolAgent 
 	return ta
 }
 
+// WithMessageHistory sets the message history for the ToolAgent.
+func (ta *ToolAgent) WithMessageHistory(messages []llm.Message) *ToolAgent {
+	ta.messageHistory = messages
+	return ta
+}
+
 // Run executes the ToolAgent, potentially using tools and internal workflows.
 func (ta *ToolAgent) Run(wctx workflow.WorkContext) workflow.WorkReport {
 	startTime := time.Now()
@@ -188,12 +195,27 @@ func (ta *ToolAgent) executeSimpleToolCalling(wctx workflow.WorkContext, startTi
 	// Build messages for the completion request
 	var messages []llm.Message
 	
-	// Add system prompt if provided
+	// Add message history first
+	if len(ta.messageHistory) > 0 {
+		messages = append(messages, ta.messageHistory...)
+	}
+	
+	// Add system prompt if provided (only if not already in history)
 	if ta.prompt != "" {
-		messages = append(messages, llm.Message{
-			Role:    "system",
-			Content: ta.prompt,
-		})
+		// Check if system prompt already exists in history
+		systemPromptExists := false
+		for _, msg := range ta.messageHistory {
+			if msg.Role == "system" && msg.Content == ta.prompt {
+				systemPromptExists = true
+				break
+			}
+		}
+		if !systemPromptExists {
+			messages = append(messages, llm.Message{
+				Role:    "system",
+				Content: ta.prompt,
+			})
+		}
 	}
 	
 	// Check for user input in context (check both "user_input" and "task" for compatibility)

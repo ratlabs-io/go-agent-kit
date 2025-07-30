@@ -15,6 +15,7 @@ A lightweight, composable framework for building agent workflows in Go. Go Agent
 - **⚡ Composable Workflows**: Sequential, parallel, conditional, and switch execution patterns
 - **📦 Production Ready**: Clean architecture, comprehensive error handling, and structured logging
 - **🔄 Event System**: Callback-based monitoring and metrics collection
+- **💬 Message History**: Built-in support for conversation context and chat history
 
 ## 📖 Quick Start
 
@@ -59,6 +60,32 @@ func main() {
         fmt.Printf("Response: %v\n", report.Data)
     }
 }
+```
+
+### Chat Agent with Message History
+
+```go
+// Load previous conversation history
+messageHistory := []llm.Message{
+    {Role: "user", Content: "What's the weather like today?"},
+    {Role: "assistant", Content: "I don't have access to real-time weather data. You might want to check a weather service or app for current conditions."},
+    {Role: "user", Content: "Can you recommend any good weather apps?"},
+    {Role: "assistant", Content: "Sure! Some popular weather apps include Weather.com, AccuWeather, Dark Sky, and weather.gov for US locations."},
+}
+
+// Create agent with conversation history
+chatAgent := agent.NewChatAgent("assistant").
+    WithModel("gpt-3.5-turbo").
+    WithPrompt("You are a helpful assistant with knowledge of previous conversations.").
+    WithClient(llmClient).
+    WithMessageHistory(messageHistory)
+
+// Continue the conversation
+ctx := workflow.NewWorkContext(context.Background())
+ctx.Set("user_input", "Thanks! What about for international travel?")
+
+// The agent will have access to the full conversation context
+report := chatAgent.Run(ctx)
 ```
 
 ### Sequential Workflow
@@ -110,6 +137,31 @@ toolAgent := agent.NewToolAgent("calculator").
 
 ctx := workflow.NewWorkContext(context.Background())
 ctx.Set("user_input", "Calculate 15 * 23 and echo the result")
+report := toolAgent.Run(ctx)
+```
+
+### Tool Agent with Message History
+
+```go
+// Previous tool-based conversation
+toolHistory := []llm.Message{
+    {Role: "user", Content: "What tools do you have available?"},
+    {Role: "assistant", Content: "I have access to a math tool for calculations and an echo tool for repeating text."},
+    {Role: "user", Content: "Calculate 10 + 20"},
+    {Role: "assistant", Content: "I'll calculate that for you. 10 + 20 = 30"},
+}
+
+// Create tool agent with history
+toolAgent := agent.NewToolAgent("assistant").
+    WithModel("gpt-3.5-turbo").
+    WithPrompt("You are a helpful assistant that can use tools.").
+    WithClient(llmClient).
+    WithTools(mathTool, echoTool).
+    WithMessageHistory(toolHistory)
+
+// Continue using tools with context
+ctx := workflow.NewWorkContext(context.Background())
+ctx.Set("user_input", "Now multiply that result by 5")
 report := toolAgent.Run(ctx)
 ```
 
@@ -402,6 +454,7 @@ Explore comprehensive examples in [`examples/workflows/`](./examples/workflows/)
 - **[simple-agent](./examples/workflows/simple-agent/)**: Basic chat completion
 - **[simple-agent-with-callbacks](./examples/workflows/simple-agent-with-callbacks/)**: Event monitoring
 - **[structured-json-agent](./examples/workflows/structured-json-agent/)**: JSON schema responses
+- **[chat-with-history](./examples/workflows/chat-with-history/)**: Conversation context and message history
 - **[sequential-workflow](./examples/workflows/sequential-workflow/)**: Multi-step processing  
 - **[chaining-patterns](./examples/workflows/chaining-patterns/)**: Different sequential chaining strategies
 - **[parallel-workflow](./examples/workflows/parallel-workflow/)**: Concurrent execution
@@ -419,6 +472,7 @@ export OPENAI_API_KEY=your-actual-api-key-here
 # Run any example
 go run examples/workflows/simple-agent/main.go
 go run examples/workflows/structured-json-agent/main.go
+go run examples/workflows/chat-with-history/main.go
 go run examples/workflows/sequential-workflow/main.go
 go run examples/workflows/tool-agent/main.go
 ```

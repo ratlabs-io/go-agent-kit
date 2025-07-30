@@ -13,13 +13,14 @@ import (
 // It implements the Agent interface and can be used as a node in workflows.
 // For tool-calling capabilities, use ToolAgent instead.
 type ChatAgent struct {
-	name         string
-	agentType    AgentType
-	model        string
-	prompt       string
-	client       llm.Client
-	jsonSchema   *llm.JSONSchema
-	responseType llm.ResponseType
+	name           string
+	agentType      AgentType
+	model          string
+	prompt         string
+	client         llm.Client
+	jsonSchema     *llm.JSONSchema
+	responseType   llm.ResponseType
+	messageHistory []llm.Message
 }
 
 // NewChatAgent creates a new ChatAgent with the given name.
@@ -106,6 +107,12 @@ func (ca *ChatAgent) WithResponseType(responseType llm.ResponseType) *ChatAgent 
 	return ca
 }
 
+// WithMessageHistory sets the message history for the ChatAgent.
+func (ca *ChatAgent) WithMessageHistory(messages []llm.Message) *ChatAgent {
+	ca.messageHistory = messages
+	return ca
+}
+
 // Run executes the ChatAgent by performing a single LLM completion.
 func (ca *ChatAgent) Run(wctx workflow.WorkContext) workflow.WorkReport {
 	startTime := time.Now()
@@ -122,12 +129,27 @@ func (ca *ChatAgent) Run(wctx workflow.WorkContext) workflow.WorkReport {
 	// Build messages for the completion request
 	var messages []llm.Message
 	
-	// Add system prompt if provided
+	// Add message history first
+	if len(ca.messageHistory) > 0 {
+		messages = append(messages, ca.messageHistory...)
+	}
+	
+	// Add system prompt if provided (only if not already in history)
 	if ca.prompt != "" {
-		messages = append(messages, llm.Message{
-			Role:    "system",
-			Content: ca.prompt,
-		})
+		// Check if system prompt already exists in history
+		systemPromptExists := false
+		for _, msg := range ca.messageHistory {
+			if msg.Role == "system" && msg.Content == ca.prompt {
+				systemPromptExists = true
+				break
+			}
+		}
+		if !systemPromptExists {
+			messages = append(messages, llm.Message{
+				Role:    "system",
+				Content: ca.prompt,
+			})
+		}
 	}
 	
 	// Check for user input in context

@@ -24,49 +24,56 @@ This directory contains practical examples demonstrating how to use the go-agent
 - Multi-step workflows with structured data flow
 - Demonstrates type-safe parsing and validation
 
-### 4. `sequential-workflow/`
+### 4. `chat-with-history/`
+**Chat agents with message history**
+- Shows how to load and maintain conversation context
+- Demonstrates both ChatAgent and ToolAgent with history
+- Multi-turn conversation example with history building
+- Perfect for stateful, context-aware applications
+
+### 5. `sequential-workflow/`
 **Sequential multi-agent workflow**
 - Multiple agents running one after another
 - Shows how to chain agent outputs with `ThenChain()`
 - Demonstrates `SequentialFlow` usage
 
-### 5. `chaining-patterns/`
+### 6. `chaining-patterns/`
 **Different sequential chaining strategies**
 - Compares `ThenChain()` vs `ThenAccumulate()` patterns
 - Shows how data flows through agent chains
 - Pipeline vs collaborative processing approaches
 
-### 6. `parallel-workflow/`
+### 7. `parallel-workflow/`
 **Parallel multi-agent workflow**
 - Multiple agents running simultaneously
 - Shows how to combine parallel execution results
 - Demonstrates `ParallelFlow` usage
 
-### 7. `conditional-workflow/`
+### 8. `conditional-workflow/`
 **Conditional workflow execution**
 - Shows how to implement branching logic
 - Demonstrates `ConditionalFlow` and custom predicates
 - Routing based on agent output classification
 
-### 8. `switch-workflow/`
+### 9. `switch-workflow/`
 **Switch-based workflow routing**
 - Multiple condition evaluation with priority ordering
 - Shows sentiment-based routing with urgency override
 - Demonstrates `SwitchFlow` builder pattern with default fallback
 
-### 9. `action-func/`
+### 10. `action-func/`
 **Simple action creation with ActionFunc**
 - Shows how to create actions without boilerplate
 - Demonstrates text processing pipeline with validation
 - Perfect for quick prototyping and simple transformations
 
-### 10. `tool-agent/`
+### 11. `tool-agent/`
 **Tool-enabled agent workflow**
 - Shows how to create agents that can use tools
 - Demonstrates tool registration and execution
 - Examples of math, echo, and simple tools
 
-### 11. `custom-logging/`
+### 12. `custom-logging/`
 **Flexible logging configuration**
 - Default logging behavior (stderr, Info level)
 - Disabling all logging with NoOpLogger
@@ -98,6 +105,7 @@ This directory contains practical examples demonstrating how to use the go-agent
 - Data sharing between workflow steps via `Set()`/`Get()`
 - Agent result storage and retrieval
 - Cross-action communication through context
+- Message history for maintaining conversation state
 
 ## Running Examples
 
@@ -114,6 +122,7 @@ export OPENAI_API_KEY=your-actual-api-key-here
 go run examples/workflows/simple-agent/main.go
 go run examples/workflows/simple-agent-with-callbacks/main.go
 go run examples/workflows/structured-json-agent/main.go
+go run examples/workflows/chat-with-history/main.go
 go run examples/workflows/sequential-workflow/main.go
 go run examples/workflows/chaining-patterns/main.go
 go run examples/workflows/parallel-workflow/main.go
