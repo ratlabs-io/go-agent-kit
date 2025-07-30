@@ -44,7 +44,7 @@ func main() {
 	elapsed := time.Since(start)
 	
 	// Display final results
-	fmt.Println("=" * 60)
+	fmt.Println("============================================================")
 	fmt.Printf("🎯 Order Processing Complete! (Total time: %v)\n", elapsed.Round(time.Millisecond))
 	
 	if finalReport.Status == workflow.StatusCompleted {
