@@ -35,8 +35,12 @@ func main() {
 	fmt.Println("\n--- Example 2: Tool Agent with History ---")
 	runToolAgentWithHistory(llmClient)
 	
-	// Example 3: Multi-turn Conversation
-	fmt.Println("\n--- Example 3: Multi-turn Conversation ---")
+	// Example 3: Runtime Message History Loading
+	fmt.Println("\n--- Example 3: Runtime Message History Loading ---")
+	runRuntimeHistoryExample(llmClient)
+	
+	// Example 4: Multi-turn Conversation
+	fmt.Println("\n--- Example 4: Multi-turn Conversation ---")
 	runMultiTurnConversation(llmClient)
 }
 
@@ -49,15 +53,15 @@ func runBasicChatWithHistory(llmClient llm.Client) {
 		{Role: "assistant", Content: "April is an excellent choice! The cherry blossom (sakura) season is magical. The blooms typically peak in early to mid-April in popular spots like Tokyo and Kyoto. I'd recommend booking accommodations early as it's a very popular time to visit."},
 	}
 	
-	// Create agent with conversation history
+	// Create agent (no compile-time history)
 	chatAgent := agent.NewChatAgent("travel-assistant").
 		WithModel("gpt-3.5-turbo").
-		WithPrompt("You are a helpful travel assistant with knowledge of previous conversations. Continue helping the user with their travel plans.").
-		WithClient(llmClient).
-		WithMessageHistory(messageHistory)
+		WithPrompt("You are a helpful travel assistant. Continue helping the user with their travel plans.").
+		WithClient(llmClient)
 	
-	// Continue the conversation
+	// Continue the conversation with runtime history
 	ctx := workflow.NewWorkContext(context.Background())
+	ctx.Set("message_history", messageHistory) // Load history at runtime
 	ctx.Set("user_input", "What are some must-see places in Kyoto?")
 	
 	fmt.Println("Previous conversation:")
@@ -92,15 +96,15 @@ func runToolAgentWithHistory(llmClient llm.Client) {
 		{Role: "assistant", Content: "Let me calculate your expenses and remaining budget. Your total fixed expenses are $2100 ($1500 + $200 + $400), leaving you with $2900 per month for other expenses and savings."},
 	}
 	
-	// Create tool agent with history
+	// Create tool agent (no compile-time history)
 	toolAgent := agent.NewToolAgent("budget-assistant").
 		WithModel("gpt-3.5-turbo").
-		WithPrompt("You are a helpful financial assistant that can perform calculations. You have access to previous conversations about the user's budget.").
+		WithPrompt("You are a helpful financial assistant that can perform calculations.").
 		WithClient(llmClient).
-		WithTools(mathTool).
-		WithMessageHistory(toolHistory)
+		WithTools(mathTool)
 	
 	ctx := workflow.NewWorkContext(context.Background())
+	ctx.Set("message_history", toolHistory) // Load history at runtime
 	ctx.Set("user_input", "If I save 20% of my remaining budget, how much would that be?")
 	
 	fmt.Println("Previous conversation:")
@@ -122,13 +126,56 @@ func runToolAgentWithHistory(llmClient llm.Client) {
 	}
 }
 
+func runRuntimeHistoryExample(llmClient llm.Client) {
+	// Create agent WITHOUT compile-time history
+	agent := agent.NewChatAgent("support-agent").
+		WithModel("gpt-3.5-turbo").
+		WithPrompt("You are a helpful customer support agent.").
+		WithClient(llmClient)
+	
+	// Simulate loading conversation history from external source at runtime
+	// (this could be from a database, session storage, API, etc.)
+	customerHistory := []llm.Message{
+		{Role: "user", Content: "I'm having trouble with my recent order #12345."},
+		{Role: "assistant", Content: "I'm sorry to hear you're having trouble with order #12345. Can you please tell me what specific issue you're experiencing?"},
+		{Role: "user", Content: "The item I received is damaged and doesn't match what I ordered."},
+		{Role: "assistant", Content: "I apologize for this inconvenience. I'll help you resolve this right away. Let me look up your order details and arrange a replacement."},
+	}
+	
+	fmt.Println("Loading conversation history from external source...")
+	fmt.Println("Previous conversation:")
+	for _, msg := range customerHistory {
+		fmt.Printf("  %s: %s\n", msg.Role, msg.Content)
+	}
+	
+	// Create context and set history at RUNTIME
+	ctx := workflow.NewWorkContext(context.Background())
+	ctx.Set("message_history", customerHistory) // Runtime history loading
+	ctx.Set("user_input", "How long will the replacement take to arrive?")
+	
+	fmt.Println("\nContinuing conversation with runtime-loaded history...")
+	fmt.Println("User: How long will the replacement take to arrive?")
+	
+	// Agent will use the runtime-loaded history
+	report := agent.Run(ctx)
+	
+	if report.Status == workflow.StatusCompleted {
+		fmt.Printf("✅ Agent completed successfully!\n")
+		if response, ok := report.Data.(*llm.CompletionResponse); ok {
+			fmt.Printf("Assistant: %s\n", response.Content)
+		}
+	} else {
+		fmt.Printf("❌ Agent failed: %v\n", report.Errors)
+	}
+}
+
 func runMultiTurnConversation(llmClient llm.Client) {
 	fmt.Println("Starting a multi-turn conversation about cooking...")
 	
-	// Initialize with system prompt only
+	// Initialize with empty history
 	var history []llm.Message
 	
-	// Create the agent
+	// Create the agent (no compile-time history)
 	cookingAgent := agent.NewChatAgent("cooking-assistant").
 		WithModel("gpt-3.5-turbo").
 		WithPrompt("You are a helpful cooking assistant. Help users with recipes, cooking techniques, and meal planning.").
@@ -145,11 +192,9 @@ func runMultiTurnConversation(llmClient llm.Client) {
 	for i, question := range questions {
 		fmt.Printf("\nTurn %d - User: %s\n", i+1, question)
 		
-		// Update agent with current history
-		cookingAgent = cookingAgent.WithMessageHistory(history)
-		
-		// Create context for this turn
+		// Create context for this turn with current history
 		ctx := workflow.NewWorkContext(context.Background())
+		ctx.Set("message_history", history) // Load current history at runtime
 		ctx.Set("user_input", question)
 		
 		// Run the agent
