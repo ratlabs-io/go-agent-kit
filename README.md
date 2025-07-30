@@ -12,7 +12,7 @@ A lightweight, composable framework for building agent workflows in Go. Go Agent
 - **🤖 Bring Your Own LLM**: Generic interface supports any LLM provider
 - **🛠️ Flexible Tool System**: Simple native tools with full schema control
 - **📋 Structured JSON Responses**: Support for JSON schemas and type-safe outputs
-- **⚡ Composable Workflows**: Sequential, parallel, conditional, and switch execution patterns
+- **⚡ Composable Workflows**: Sequential, parallel, conditional, switch, loop, retry, and error handling patterns
 - **📦 Production Ready**: Clean architecture, comprehensive error handling, and structured logging
 - **🔄 Event System**: Callback-based monitoring and metrics collection
 - **💬 Message History**: Built-in support for conversation context and chat history
@@ -273,6 +273,105 @@ router := workflow.NewSwitchFlowBuilder("content-router").
     Build()
 ```
 
+### Loop Constructs
+Execute repeated operations with different loop patterns:
+```go
+// Count-based loop
+countLoop := workflow.NewLoop("process-batch", 5).
+    WithAction(processingAgent)
+
+// While condition loop
+whileLoop := workflow.NewLoopWhile("accumulate-data", func(ctx workflow.WorkContext) (bool, error) {
+    total, _ := ctx.Get("total")
+    return total.(int) < 100, nil
+}).WithAction(accumulatorAgent)
+
+// Until condition loop  
+untilLoop := workflow.NewLoopUntil("retry-until-success", func(ctx workflow.WorkContext) (bool, error) {
+    success, _ := ctx.Get("success")
+    return success.(bool), nil
+}).WithAction(retryAgent)
+
+// Iterator loop over collections
+items := []string{"item1", "item2", "item3"}
+iterLoop := workflow.NewLoopOver("process-items", items).
+    WithAction(itemProcessor)
+```
+
+### Retry Patterns
+Handle failures with sophisticated retry strategies:
+```go
+// Basic retry with exponential backoff
+retryAction := workflow.NewRetry("api-call", 3).
+    WithAction(apiAgent).
+    WithBackoffStrategy(workflow.NewExponentialBackoff(100*time.Millisecond, 5*time.Second, 2.0)).
+    WithRetryCondition(workflow.RetryOnTimeoutCondition)
+
+// Retry with custom conditions
+retryAction := workflow.NewRetry("service-call", 5).
+    WithAction(serviceAgent).
+    WithBackoffStrategy(workflow.NewLinearBackoff(500*time.Millisecond, 200*time.Millisecond)).
+    WithRetryCondition(workflow.CombineRetryConditions(
+        workflow.RetryOnTimeoutCondition,
+        workflow.RetryOnNetworkCondition,
+    )).
+    WithStopCondition(func(ctx workflow.WorkContext, err error, attempt int) bool {
+        // Stop retrying on validation errors
+        return strings.Contains(err.Error(), "validation")
+    })
+```
+
+### Error Handling
+Structured error handling with try-catch-finally patterns:
+```go
+// Try-catch with specific error handlers
+tryCatchFlow := workflow.NewTryCatch("payment-processing").
+    WithTryAction(paymentAgent).
+    Catch(workflow.TimeoutError, timeoutHandler).
+    Catch(workflow.NetworkError, networkHandler).
+    Catch(workflow.ErrorMessageContains("insufficient funds"), fundsHandler).
+    CatchAny(generalErrorHandler).
+    Finally(cleanupAction)
+
+// Error matchers for specific error types
+validationHandler := workflow.NewDefaultErrorHandlerAction("validation-handler", 
+    func(ctx workflow.WorkContext, err error) workflow.WorkReport {
+        // Handle validation errors
+        return workflow.NewCompletedWorkReport()
+    })
+
+tryCatch := workflow.NewTryCatch("data-processing").
+    WithTryAction(dataProcessor).
+    Catch(workflow.ValidationError, validationHandler)
+```
+
+### Advanced Reliability Patterns
+Circuit breakers, timeouts, and parallel error collection:
+```go
+// Circuit breaker protection
+circuitBreaker := workflow.NewCircuitBreaker("service-breaker", 3, 2*time.Second, 5*time.Second).
+    WithAction(unreliableService)
+
+// Timeout wrapper
+timeoutWrapper := workflow.NewTimeoutWrapper("api-timeout", 30*time.Second).
+    WithAction(slowAPICall)
+
+// Parallel error collector for comprehensive monitoring
+errorCollector := workflow.NewParallelErrorCollector("health-check").
+    AddActions(databaseCheck, cacheCheck, apiCheck)
+
+// Combine multiple reliability patterns
+protectedService := workflow.NewRetry("protected-call", 3).
+    WithAction(
+        workflow.NewCircuitBreaker("circuit", 2, 1*time.Second, 3*time.Second).
+            WithAction(
+                workflow.NewTimeoutWrapper("timeout", 5*time.Second).
+                    WithAction(externalService),
+            ),
+    ).
+    WithBackoffStrategy(workflow.NewExponentialBackoff(100*time.Millisecond, 2*time.Second, 2.0))
+```
+
 ### Workflow Composition
 Nest workflows within workflows:
 ```go
@@ -455,6 +554,11 @@ Explore comprehensive examples in [`examples/workflows/`](./examples/workflows/)
 - **[parallel-workflow](./examples/workflows/parallel-workflow/)**: Concurrent execution
 - **[conditional-workflow](./examples/workflows/conditional-workflow/)**: Branching logic
 - **[switch-workflow](./examples/workflows/switch-workflow/)**: Priority-based routing
+- **[loop-constructs](./examples/workflows/loop-constructs/)**: Loop patterns (count, while, until, iterator)
+- **[retry-patterns](./examples/workflows/retry-patterns/)**: Retry strategies with backoff
+- **[error-handling](./examples/workflows/error-handling/)**: Try-catch-finally patterns
+- **[advanced-constructs](./examples/workflows/advanced-constructs/)**: Circuit breakers, timeouts, parallel error collection
+- **[comprehensive-example](./examples/workflows/comprehensive-example/)**: Real-world e-commerce order processing using all constructs
 - **[tool-agent](./examples/workflows/tool-agent/)**: Tool-calling scenarios
 - **[action-func](./examples/workflows/action-func/)**: Custom actions without boilerplate
 
@@ -471,6 +575,13 @@ go run examples/workflows/chat-with-history/main.go
 go run examples/workflows/runtime-message-history/main.go
 go run examples/workflows/sequential-workflow/main.go
 go run examples/workflows/tool-agent/main.go
+
+# Run the new reliability and control flow examples
+go run examples/workflows/loop-constructs/main.go
+go run examples/workflows/retry-patterns/main.go
+go run examples/workflows/error-handling/main.go
+go run examples/workflows/advanced-constructs/main.go
+go run examples/workflows/comprehensive-example/main.go
 ```
 
 ## 🏗️ Architecture
@@ -494,6 +605,10 @@ go-agent-kit/
 │   │   ├── parallel.go     # Parallel execution
 │   │   ├── conditional.go  # Conditional execution
 │   │   ├── switch.go       # Switch-based routing
+│   │   ├── loop.go         # Loop constructs (count, while, until, iterator)
+│   │   ├── retry.go        # Retry patterns with backoff strategies
+│   │   ├── trycatch.go     # Try-catch-finally error handling
+│   │   ├── advanced.go     # Circuit breakers, timeouts, parallel error collection
 │   │   ├── context.go      # Shared execution context
 │   │   └── callbacks.go    # Event callback system
 │   ├── agent/              # Agent implementations
@@ -528,7 +643,8 @@ We welcome contributions! Areas where you can help:
 
 - **LLM Integrations**: Add support for new LLM providers
 - **Tool Implementations**: Create useful reference tools
-- **Workflow Patterns**: Add new execution patterns
+- **Workflow Patterns**: Add new execution patterns (we just added loops, retry, error handling!)
+- **Reliability Patterns**: Enhance circuit breakers, timeouts, and fault tolerance
 - **Documentation**: Improve examples and guides
 - **Testing**: Expand test coverage
 
