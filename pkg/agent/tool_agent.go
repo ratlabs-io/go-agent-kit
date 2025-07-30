@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"time"
@@ -175,7 +176,7 @@ func (ta *ToolAgent) executeWithToolFlow(wctx workflow.WorkContext, startTime ti
 	return flowReport
 }
 
-// executeSimpleToolCalling performs simple LLM completion with tool calling.
+// executeSimpleToolCalling performs proper tool calling with conversation loop.
 func (ta *ToolAgent) executeSimpleToolCalling(wctx workflow.WorkContext, startTime time.Time) workflow.WorkReport {
 	// Convert tools to LLM tool definitions
 	var toolDefs []llm.ToolDefinition
@@ -187,7 +188,7 @@ func (ta *ToolAgent) executeSimpleToolCalling(wctx workflow.WorkContext, startTi
 		})
 	}
 	
-	// Build messages for the completion request
+	// Build initial messages for the conversation
 	var messages []llm.Message
 	
 	// Check for runtime message history in context
@@ -242,34 +243,102 @@ func (ta *ToolAgent) executeSimpleToolCalling(wctx workflow.WorkContext, startTi
 		prompt = ta.prompt
 	}
 	
-	// Prepare the completion request
-	req := llm.CompletionRequest{
-		Model:        ta.model,
-		Prompt:       prompt,
-		Messages:     messages,
-		Tools:        toolDefs,
-		JSONSchema:   ta.jsonSchema,
-		ResponseType: ta.responseType,
-		Metadata: map[string]interface{}{
-			"agent_name": ta.name,
-			"agent_type": ta.agentType,
-		},
+	// Start the tool calling loop
+	var finalResponse *llm.CompletionResponse
+	var totalTokens int
+	toolCallCount := 0
+	
+	for i := 0; i < ta.maxToolCalls; i++ {
+		// Prepare the completion request
+		req := llm.CompletionRequest{
+			Model:        ta.model,
+			Prompt:       prompt,
+			Messages:     messages,
+			Tools:        toolDefs,
+			JSONSchema:   ta.jsonSchema,
+			ResponseType: ta.responseType,
+			Metadata: map[string]interface{}{
+				"agent_name": ta.name,
+				"agent_type": ta.agentType,
+				"loop_iteration": i + 1,
+			},
+		}
+		
+		// Make LLM completion call
+		response, err := ta.client.Complete(wctx.Context(), req)
+		if err != nil {
+			elapsed := time.Since(startTime)
+			ta.log.Error("LLM completion failed", "iteration", i+1, "elapsed", elapsed, "error", err)
+			return workflow.NewFailedWorkReport(fmt.Errorf("LLM completion failed on iteration %d: %w", i+1, err))
+		}
+		
+		totalTokens += response.Usage.TotalTokens
+		finalResponse = response
+		
+		// If no tool calls, we're done
+		if len(response.ToolCalls) == 0 {
+			ta.log.Info("tool calling loop completed - no more tools requested", "iterations", i+1, "total_tokens", totalTokens)
+			break
+		}
+		
+		// Add assistant message with tool calls to conversation
+		messages = append(messages, llm.Message{
+			Role:    constants.RoleAssistant,
+			Content: response.Content,
+		})
+		
+		// Execute each tool call and add results to messages
+		for _, toolCall := range response.ToolCalls {
+			toolCallCount++
+			
+			result, err := ta.executeTool(wctx.Context(), toolCall)
+			if err != nil {
+				ta.log.Error("tool execution failed", "tool", toolCall.Name, "id", toolCall.ID, "error", err)
+				// Add error message to conversation
+				messages = append(messages, llm.Message{
+					Role:    constants.RoleTool,
+					Content: fmt.Sprintf("Error executing tool %s: %v", toolCall.Name, err),
+					Name:    toolCall.Name,
+				})
+				continue
+			}
+			
+			// Convert tool result to JSON string for the conversation
+			resultJSON := ta.formatToolResult(result)
+			
+			// Add tool result message to conversation
+			messages = append(messages, llm.Message{
+				Role:    constants.RoleTool,
+				Content: resultJSON,
+				Name:    toolCall.Name,
+			})
+			
+			ta.log.Info("tool executed successfully", "tool", toolCall.Name, "id", toolCall.ID, "iteration", i+1)
+		}
+		
+		// Clear prompt for subsequent iterations (we have messages now)
+		prompt = ""
 	}
 	
-	// For now, perform a simple completion
-	// TODO: Implement proper tool calling loop when gollm supports it
-	response, err := ta.client.Complete(wctx.Context(), req)
-	if err != nil {
-		elapsed := time.Since(startTime)
-		ta.log.Error("LLM completion failed", "elapsed", elapsed, "error", err)
-		return workflow.NewFailedWorkReport(fmt.Errorf("LLM completion failed: %w", err))
+	// Check if we hit max tool calls limit
+	if toolCallCount >= ta.maxToolCalls {
+		ta.log.Warn("reached maximum tool calls limit", "max_calls", ta.maxToolCalls, "total_calls", toolCallCount)
 	}
 	
-	// Process any tool calls in the response
-	report := ta.processToolCalls(wctx, response, startTime)
+	// Create final report
+	report := workflow.NewCompletedWorkReport()
+	report.Data = finalResponse
 	
 	elapsed := time.Since(startTime)
-	ta.log.Info("simple tool calling completed", "elapsed", elapsed, "tokens", response.Usage.TotalTokens)
+	ta.log.Info("tool calling loop completed", "elapsed", elapsed, "total_tokens", totalTokens, "tool_calls", toolCallCount)
+	
+	// Add completion metadata
+	ta.addCompletionMetadata(&report, finalResponse, startTime)
+	
+	// Override some metadata with loop-specific info
+	report.SetMetadata("total_tokens", totalTokens)
+	report.SetMetadata("tool_calls_count", toolCallCount)
+	report.SetMetadata("execution_type", "tool_calling_loop")
 	
 	// Wait for callbacks to complete if WorkContext supports waiting
 	if ctxValue := wctx.Context().Value(constants.KeyWorkContext); ctxValue != nil {
@@ -281,42 +350,25 @@ func (ta *ToolAgent) executeSimpleToolCalling(wctx workflow.WorkContext, startTi
 	return report
 }
 
-// processToolCalls handles tool calls from the LLM response.
-func (ta *ToolAgent) processToolCalls(wctx workflow.WorkContext, response *llm.CompletionResponse, startTime time.Time) workflow.WorkReport {
-	report := workflow.NewCompletedWorkReport()
-	report.Data = response
-	
-	// If no tool calls, return the response as-is
-	if len(response.ToolCalls) == 0 {
-		ta.addCompletionMetadata(&report, response, startTime)
-		return report
+// formatToolResult converts a tool execution result to JSON string for LLM conversation.
+func (ta *ToolAgent) formatToolResult(result interface{}) string {
+	// Handle nil results
+	if result == nil {
+		return "null"
 	}
 	
-	// Execute tool calls
-	toolResults := make(map[string]interface{})
-	
-	for _, toolCall := range response.ToolCalls {
-		result, err := ta.executeTool(wctx.Context(), toolCall)
-		if err != nil {
-			ta.log.Error("tool execution failed", "tool", toolCall.Name, "error", err)
-			report.AddError(fmt.Errorf("tool %s failed: %w", toolCall.Name, err))
-			continue
-		}
-		
-		toolResults[toolCall.ID] = result
-		ta.log.Info("tool executed successfully", "tool", toolCall.Name, "id", toolCall.ID)
+	// Handle string results (already formatted)
+	if str, ok := result.(string); ok {
+		return str
 	}
 	
-	// Add tool results to response data
-	if responseData, ok := report.Data.(*llm.CompletionResponse); ok {
-		if responseData.Metadata == nil {
-			responseData.Metadata = make(map[string]interface{})
-		}
-		responseData.Metadata["tool_results"] = toolResults
+	// Handle structured results (convert to JSON)
+	if resultData, err := json.Marshal(result); err == nil {
+		return string(resultData)
 	}
 	
-	ta.addCompletionMetadata(&report, response, startTime)
-	return report
+	// Fallback to string representation
+	return fmt.Sprintf("%v", result)
 }
 
 // executeTool executes a single tool call.
