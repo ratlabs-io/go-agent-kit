@@ -1,4 +1,4 @@
-package openai
+package clients
 
 import (
 	"bytes"
@@ -11,88 +11,83 @@ import (
 	"github.com/ratlabs-io/go-agent-kit/pkg/llm"
 )
 
-// Client implements the llm.Client interface using OpenAI's API.
-// This is an example implementation - users can use this or create their own.
-type Client struct {
+// OpenAIClient implements the llm.Client interface using OpenAI's API.
+type OpenAIClient struct {
 	apiKey  string
 	baseURL string
 	client  *http.Client
 }
 
-// NewClient creates a new OpenAI client with the provided API key.
-func NewClient(apiKey string) *Client {
-	return &Client{
+// NewOpenAIClient creates a new OpenAI client with the provided API key.
+func NewOpenAIClient(apiKey string) *OpenAIClient {
+	return &OpenAIClient{
 		apiKey:  apiKey,
 		baseURL: "https://api.openai.com/v1",
 		client:  &http.Client{},
 	}
 }
 
-// NewClientWithURL creates a new OpenAI client with custom base URL (for Azure, etc.).
-func NewClientWithURL(apiKey, baseURL string) *Client {
-	return &Client{
-		apiKey:  apiKey,
-		baseURL: baseURL,
-		client:  &http.Client{},
-	}
-}
-
 // Complete implements llm.Client.Complete using OpenAI's chat completions API.
-func (c *Client) Complete(ctx context.Context, req llm.CompletionRequest) (*llm.CompletionResponse, error) {
+func (c *OpenAIClient) Complete(ctx context.Context, req llm.CompletionRequest) (*llm.CompletionResponse, error) {
 	// Convert to OpenAI format
 	openAIReq := c.convertRequest(req)
-
+	
 	// Make API request
 	reqBody, err := json.Marshal(openAIReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
-
+	
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/chat/completions", bytes.NewReader(reqBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
-
+	
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
-
+	
 	resp, err := c.client.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("API request failed: %w", err)
 	}
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			// Log error but don't fail the request
-			_ = err // Silently ignore close errors
-		}
-	}()
-
+	defer resp.Body.Close()
+	
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, body)
 	}
-
+	
 	var openAIResp openAIResponse
 	if err := json.NewDecoder(resp.Body).Decode(&openAIResp); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
-
+	
 	// Convert back to our format
 	return c.convertResponse(openAIResp), nil
 }
 
 // Close implements llm.Client.Close (no-op for HTTP client).
-func (c *Client) Close() error {
+func (c *OpenAIClient) Close() error {
 	return nil
 }
 
 // convertRequest converts our request format to OpenAI's format.
-func (c *Client) convertRequest(req llm.CompletionRequest) openAIRequest {
+func (c *OpenAIClient) convertRequest(req llm.CompletionRequest) openAIRequest {
 	openAIReq := openAIRequest{
-		Model:       req.Model,
-		Temperature: 0.7,
+		Model: req.Model,
 	}
 
+	// Set parameters - use provided values or sensible defaults
+	if req.MaxTokens > 0 {
+		openAIReq.MaxTokens = req.MaxTokens
+	}
+	if req.Temperature > 0 {
+		openAIReq.Temperature = req.Temperature
+	}
+	if req.TopP > 0 {
+		openAIReq.TopP = req.TopP
+	}
+	
 	// Build messages
 	if len(req.Messages) > 0 {
 		// Use provided messages
@@ -108,8 +103,23 @@ func (c *Client) convertRequest(req llm.CompletionRequest) openAIRequest {
 			{Role: "user", Content: req.Prompt},
 		}
 	}
-
-	// Handle JSON response requests
+	
+	// Convert tools if provided
+	if len(req.Tools) > 0 {
+		for _, tool := range req.Tools {
+			openAIReq.Tools = append(openAIReq.Tools, openAITool{
+				Type: "function",
+				Function: openAIFunction{
+					Name:        tool.Name,
+					Description: tool.Description,
+					Parameters:  tool.Parameters,
+				},
+			})
+		}
+		openAIReq.ToolChoice = "auto"
+	}
+	
+	// Handle JSON response formatting
 	if req.ResponseType == llm.ResponseTypeJSONObject {
 		openAIReq.ResponseFormat = &openAIResponseFormat{
 			Type: "json_object",
@@ -125,27 +135,12 @@ func (c *Client) convertRequest(req llm.CompletionRequest) openAIRequest {
 			},
 		}
 	}
-
-	// Convert tools if provided
-	if len(req.Tools) > 0 {
-		for _, tool := range req.Tools {
-			openAIReq.Tools = append(openAIReq.Tools, openAITool{
-				Type: "function",
-				Function: openAIFunction{
-					Name:        tool.Name,
-					Description: tool.Description,
-					Parameters:  tool.Parameters,
-				},
-			})
-		}
-		openAIReq.ToolChoice = "auto"
-	}
-
+	
 	return openAIReq
 }
 
 // convertResponse converts OpenAI's response to our format.
-func (c *Client) convertResponse(resp openAIResponse) *llm.CompletionResponse {
+func (c *OpenAIClient) convertResponse(resp openAIResponse) *llm.CompletionResponse {
 	result := &llm.CompletionResponse{
 		Usage: llm.Usage{
 			PromptTokens:     resp.Usage.PromptTokens,
@@ -154,11 +149,11 @@ func (c *Client) convertResponse(resp openAIResponse) *llm.CompletionResponse {
 		},
 		Metadata: make(map[string]interface{}),
 	}
-
+	
 	if len(resp.Choices) > 0 {
 		choice := resp.Choices[0]
 		result.Content = choice.Message.Content
-
+		
 		// Convert tool calls if present
 		for _, toolCall := range choice.Message.ToolCalls {
 			var args map[string]interface{}
@@ -166,7 +161,7 @@ func (c *Client) convertResponse(resp openAIResponse) *llm.CompletionResponse {
 				// If parsing fails, store as string
 				args = map[string]interface{}{"raw": toolCall.Function.Arguments}
 			}
-
+			
 			result.ToolCalls = append(result.ToolCalls, llm.ToolCall{
 				ID:   toolCall.ID,
 				Name: toolCall.Function.Name,
@@ -174,17 +169,19 @@ func (c *Client) convertResponse(resp openAIResponse) *llm.CompletionResponse {
 			})
 		}
 	}
-
+	
 	return result
 }
 
-// OpenAI API types (simplified)
+// OpenAI API types
 type openAIRequest struct {
 	Model          string                `json:"model"`
 	Messages       []openAIMessage       `json:"messages"`
 	Tools          []openAITool          `json:"tools,omitempty"`
 	ToolChoice     string                `json:"tool_choice,omitempty"`
-	Temperature    float64               `json:"temperature"`
+	MaxTokens      int                   `json:"max_tokens,omitempty"`
+	Temperature    float64               `json:"temperature,omitempty"`
+	TopP           float64               `json:"top_p,omitempty"`
 	ResponseFormat *openAIResponseFormat `json:"response_format,omitempty"`
 }
 
@@ -206,8 +203,8 @@ type openAIFunction struct {
 }
 
 type openAIToolCall struct {
-	ID       string             `json:"id"`
-	Type     string             `json:"type"`
+	ID       string              `json:"id"`
+	Type     string              `json:"type"`
 	Function openAIFunctionCall `json:"function"`
 }
 
@@ -232,13 +229,13 @@ type openAIUsage struct {
 }
 
 type openAIResponseFormat struct {
-	Type       string            `json:"type"` // "text", "json_object", "json_schema"
+	Type       string             `json:"type"`
 	JSONSchema *openAIJSONSchema `json:"json_schema,omitempty"`
 }
 
 type openAIJSONSchema struct {
 	Name        string                 `json:"name"`
-	Description string                 `json:"description,omitempty"`
+	Description string                 `json:"description"`
 	Schema      map[string]interface{} `json:"schema"`
 	Strict      bool                   `json:"strict"`
 }

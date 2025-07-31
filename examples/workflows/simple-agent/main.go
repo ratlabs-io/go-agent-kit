@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ratlabs-io/go-agent-kit/examples/integrations/openai"
+	"github.com/ratlabs-io/go-agent-kit/examples/integrations/clients"
 	"github.com/ratlabs-io/go-agent-kit/pkg/agent"
 	"github.com/ratlabs-io/go-agent-kit/pkg/llm"
 	"github.com/ratlabs-io/go-agent-kit/pkg/workflow"
@@ -16,30 +16,67 @@ import (
 func main() {
 	fmt.Println("=== Simple Agent Workflow Example ===")
 
-	// Get OpenAI API key from environment
-	apiKey := os.Getenv("OPENAI_API_KEY")
-	if apiKey == "" {
-		fmt.Println("Error: OPENAI_API_KEY environment variable not set")
-		fmt.Println("Please set it with: export OPENAI_API_KEY=your-api-key-here")
+	// Set up the router with available providers
+	router := llm.NewRouterClient()
+	var hasProvider bool
+
+	if apiKey := os.Getenv("OPENAI_API_KEY"); apiKey != "" {
+		router.Register("openai", clients.NewOpenAIClient(apiKey))
+		hasProvider = true
+		fmt.Println("✓ Registered OpenAI provider")
+	}
+	if apiKey := os.Getenv("ANTHROPIC_API_KEY"); apiKey != "" {
+		router.Register("anthropic", clients.NewAnthropicClient(apiKey))
+		hasProvider = true
+		fmt.Println("✓ Registered Anthropic provider")
+	}
+	if apiKey := os.Getenv("GEMINI_API_KEY"); apiKey != "" {
+		router.Register("gemini", clients.NewGeminiClient(apiKey))
+		hasProvider = true
+		fmt.Println("✓ Registered Gemini provider")
+	}
+	if apiKey := os.Getenv("GROK_API_KEY"); apiKey != "" {
+		router.Register("grok", clients.NewGrokClient(apiKey))
+		hasProvider = true
+		fmt.Println("✓ Registered Grok provider")
+	}
+
+	if !hasProvider {
+		fmt.Println("Error: No API keys found. Set one or more of:")
+		fmt.Println("  OPENAI_API_KEY")
+		fmt.Println("  ANTHROPIC_API_KEY")
+		fmt.Println("  GEMINI_API_KEY")
+		fmt.Println("  GROK_API_KEY")
 		os.Exit(1)
 	}
 
-	// Create OpenAI client
-	llmClient := openai.NewClient(apiKey)
+	// Determine which model to use (prefer OpenAI, fall back to others)
+	var model string
+	if router.IsProviderRegistered("openai") {
+		model = "openai/gpt-4o-mini"
+	} else if router.IsProviderRegistered("anthropic") {
+		model = "anthropic/claude-3-haiku-20240307"
+	} else if router.IsProviderRegistered("gemini") {
+		model = "gemini/gemini-1.5-flash"
+	} else if router.IsProviderRegistered("grok") {
+		model = "grok/grok-beta"
+	}
+
+	fmt.Printf("Using model: %s\n", model)
 
 	// Example 1: Basic Text Response
 	fmt.Println("\n--- Example 1: Basic Text Response ---")
-	runBasicTextExample(llmClient)
+	runBasicTextExample(router, model)
 
 	// Example 2: JSON Response (no schema)
 	fmt.Println("\n--- Example 2: JSON Response ---")
-	runJSONResponseExample(llmClient)
+	runJSONResponseExample(router, model)
 }
 
-func runBasicTextExample(llmClient llm.Client) {
+func runBasicTextExample(llmClient llm.Client, model string) {
 	// Create a simple chat agent
 	chatAgent := agent.NewChatAgent("assistant").
-		WithModel("gpt-3.5-turbo").
+		WithModel(model).
 		WithPrompt("You are a helpful assistant. Respond concisely.").
 		WithClient(llmClient)
 
@@ -64,10 +101,10 @@ func runBasicTextExample(llmClient llm.Client) {
 	}
 }
 
-func runJSONResponseExample(llmClient llm.Client) {
+func runJSONResponseExample(llmClient llm.Client, model string) {
 	// Create an agent that responds with JSON
 	jsonAgent := agent.NewChatAgent("json-assistant").
-		WithModel("gpt-3.5-turbo").
+		WithModel(model).
 		WithPrompt(`You are a helpful assistant. Respond with a JSON object containing:
 - "answer": the direct answer to the question
 - "confidence": your confidence level (low/medium/high)  

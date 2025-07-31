@@ -16,8 +16,7 @@ BINARY_DIR=dist
 all: test build
 
 build:
-	mkdir -p $(BINARY_DIR)
-	$(GOBUILD) -o $(BINARY_DIR)/$(BINARY_NAME) -v ./...
+	$(GOBUILD) -v ./...
 
 test:
 	$(GOTEST) -v -race -coverprofile=coverage.out ./...

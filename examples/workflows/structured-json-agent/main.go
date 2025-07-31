@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ratlabs-io/go-agent-kit/examples/integrations/openai"
+	"github.com/ratlabs-io/go-agent-kit/examples/integrations/clients"
 	"github.com/ratlabs-io/go-agent-kit/pkg/agent"
 	"github.com/ratlabs-io/go-agent-kit/pkg/llm"
 	"github.com/ratlabs-io/go-agent-kit/pkg/workflow"
@@ -33,7 +33,7 @@ func main() {
 	}
 
 	// Create OpenAI client
-	llmClient := openai.NewClient(apiKey)
+	llmClient := clients.NewOpenAIClient(apiKey)
 
 	// Example 1: Structured JSON with Schema
 	fmt.Println("\n--- Example 1: Task Analysis with JSON Schema ---")

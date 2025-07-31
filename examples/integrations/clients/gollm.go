@@ -1,4 +1,4 @@
-package gollm
+package clients
 
 import (
 	"context"
@@ -8,17 +8,17 @@ import (
 	"github.com/teilomillet/gollm"
 )
 
-// Client implements the llm.Client interface using the gollm library.
+// GollmClient implements the llm.Client interface using the gollm library.
 // This is an example implementation - users can use this or create their own.
 //
 // To use this, add to your go.mod:
 // require github.com/teilomillet/gollm v0.1.9
-type Client struct {
+type GollmClient struct {
 	llm gollm.LLM
 }
 
-// NewClient creates a new gollm client with the specified provider and model.
-func NewClient(provider, model string) (*Client, error) {
+// NewGollmClient creates a new gollm client with the specified provider and model.
+func NewGollmClient(provider, model string) (*GollmClient, error) {
 	llmInstance, err := gollm.NewLLM(
 		gollm.SetProvider(provider),
 		gollm.SetModel(model),
@@ -27,25 +27,25 @@ func NewClient(provider, model string) (*Client, error) {
 		return nil, fmt.Errorf("failed to create gollm instance: %w", err)
 	}
 
-	return &Client{
+	return &GollmClient{
 		llm: llmInstance,
 	}, nil
 }
 
-// NewClientWithOptions creates a new gollm client with custom options.
-func NewClientWithOptions(opts ...gollm.ConfigOption) (*Client, error) {
+// NewGollmClientWithOptions creates a new gollm client with custom options.
+func NewGollmClientWithOptions(opts ...gollm.ConfigOption) (*GollmClient, error) {
 	llmInstance, err := gollm.NewLLM(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gollm instance: %w", err)
 	}
 
-	return &Client{
+	return &GollmClient{
 		llm: llmInstance,
 	}, nil
 }
 
 // Complete implements llm.Client.Complete using gollm.
-func (c *Client) Complete(ctx context.Context, req llm.CompletionRequest) (*llm.CompletionResponse, error) {
+func (c *GollmClient) Complete(ctx context.Context, req llm.CompletionRequest) (*llm.CompletionResponse, error) {
 	// For now, we'll do a simple generation
 	// TODO: Enhance with proper tool calling integration when gollm supports it
 
@@ -62,6 +62,13 @@ func (c *Client) Complete(ctx context.Context, req llm.CompletionRequest) (*llm.
 
 	// Create gollm prompt
 	gollmPrompt := c.llm.NewPrompt(prompt)
+	
+	// TODO: Set generation parameters when gollm supports them
+	// The gollm library currently doesn't expose MaxTokens, Temperature, TopP on Prompt
+	// These parameters would need to be set when creating the LLM instance or through other means
+	_ = req.MaxTokens    // Suppress unused variable warning
+	_ = req.Temperature  // Suppress unused variable warning
+	_ = req.TopP         // Suppress unused variable warning
 
 	response, err := c.llm.Generate(ctx, gollmPrompt)
 	if err != nil {
@@ -83,7 +90,7 @@ func (c *Client) Complete(ctx context.Context, req llm.CompletionRequest) (*llm.
 }
 
 // Close implements llm.Client.Close.
-func (c *Client) Close() error {
+func (c *GollmClient) Close() error {
 	// gollm doesn't currently have a Close method
 	// This is here for future compatibility
 	return nil

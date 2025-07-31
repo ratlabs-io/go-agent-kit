@@ -12,6 +12,9 @@ type CompletionRequest struct {
 	Tools        []ToolDefinition       `json:"tools,omitempty"`
 	JSONSchema   *JSONSchema            `json:"json_schema,omitempty"`   // For structured JSON responses
 	ResponseType ResponseType           `json:"response_type,omitempty"` // text, json_object, json_schema
+	MaxTokens    int                    `json:"max_tokens,omitempty"`    // Maximum number of tokens to generate
+	Temperature  float64                `json:"temperature,omitempty"`   // Sampling temperature (0.0 to 2.0)
+	TopP         float64                `json:"top_p,omitempty"`         // Nucleus sampling parameter (0.0 to 1.0)
 	Metadata     map[string]interface{} `json:"metadata,omitempty"`
 }
 

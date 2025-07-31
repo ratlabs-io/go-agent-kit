@@ -8,10 +8,12 @@ A lightweight, composable framework for building agent workflows in Go. Go Agent
 
 ## 🚀 Key Features
 
+- **🔀 Multi-Provider Router**: Built-in router for seamless switching between LLM providers (OpenAI, Anthropic, Grok, Gemini)
 - **🔧 Zero Dependencies**: Core library has no external dependencies  
 - **🤖 Bring Your Own LLM**: Generic interface supports any LLM provider
 - **🛠️ Flexible Tool System**: Simple native tools with full schema control
 - **📋 Structured JSON Responses**: Support for JSON schemas and type-safe outputs
+- **⚙️ Smart Defaults**: Sensible defaults (4000 tokens, 0.7 temp, 0.95 top-p) with full customization
 - **⚡ Composable Workflows**: Sequential, parallel, conditional, switch, loop, retry, and error handling patterns
 - **📦 Production Ready**: Clean architecture, comprehensive error handling, and structured logging
 - **🔄 Event System**: Callback-based monitoring and metrics collection
@@ -35,25 +37,24 @@ import (
     "fmt"
     "os"
     
-    "github.com/ratlabs-io/go-agent-kit/examples/integrations/openai"
+    "github.com/ratlabs-io/go-agent-kit/examples/integrations/clients"
     "github.com/ratlabs-io/go-agent-kit/pkg/agent"
-    "github.com/ratlabs-io/go-agent-kit/pkg/constants"
     "github.com/ratlabs-io/go-agent-kit/pkg/workflow"
 )
 
 func main() {
     // Create LLM client (you can use any provider)
-    llmClient := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
+    llmClient := clients.NewOpenAIClient(os.Getenv("OPENAI_API_KEY"))
     
     // Create agent
     chatAgent := agent.NewChatAgent("assistant").
-        WithModel("gpt-3.5-turbo").
+        WithModel("gpt-4o-mini").
         WithPrompt("You are a helpful assistant.").
         WithClient(llmClient)
     
     // Create workflow context
     ctx := workflow.NewWorkContext(context.Background())
-    ctx.Set(constants.KeyUserInput, "What is the capital of France?")
+    ctx.Set("user_input", "What is the capital of France?")
     
     // Run agent
     report := chatAgent.Run(ctx)
@@ -63,12 +64,48 @@ func main() {
 }
 ```
 
+### Agent Parameters
+
+All agents come with sensible defaults for generation parameters, but you can customize them:
+
+```go
+// Agents use these defaults:
+// - MaxTokens: 4000
+// - Temperature: 0.7 
+// - TopP: 0.95
+
+// Using defaults (recommended for most cases)
+chatAgent := agent.NewChatAgent("assistant").
+    WithModel("gpt-4o-mini").
+    WithPrompt("You are a helpful assistant.").
+    WithClient(llmClient)
+
+// Custom parameters for specific needs
+chatAgent := agent.NewChatAgent("assistant").
+    WithModel("gpt-4o-mini").
+    WithPrompt("You are a creative writer.").
+    WithMaxTokens(2000).      // Limit output length
+    WithTemperature(0.9).     // More creative responses
+    WithTopP(0.8).            // Adjust nucleus sampling
+    WithClient(llmClient)
+
+// Works with both ChatAgent and ToolAgent
+toolAgent := agent.NewToolAgent("assistant").
+    WithModel("gpt-4o-mini").
+    WithPrompt("You are a helpful assistant.").
+    WithMaxTokens(1500).
+    WithTemperature(0.3).     // More deterministic for tool use
+    WithTopP(0.95).
+    WithTools(mathTool).
+    WithClient(llmClient)
+```
+
 ### Chat Agent with Message History
 
 ```go
 // Create agent (agents are stateless)
 chatAgent := agent.NewChatAgent("assistant").
-    WithModel("gpt-3.5-turbo").
+    WithModel("gpt-4o-mini").
     WithPrompt("You are a helpful assistant.").
     WithClient(llmClient)
 
@@ -88,17 +125,17 @@ report := chatAgent.Run(ctx)
 ```go
 // Create specialized agents
 researchAgent := agent.NewChatAgent("researcher").
-    WithModel("gpt-3.5-turbo").
+    WithModel("gpt-4o").
     WithPrompt("Research the topic and gather key facts.").
     WithClient(llmClient)
 
 summaryAgent := agent.NewChatAgent("summarizer").
-    WithModel("gpt-3.5-turbo").
+    WithModel("gpt-4o-mini").
     WithPrompt("Create a concise summary of the research.").
     WithClient(llmClient)
 
 analyzerAgent := agent.NewChatAgent("analyzer").
-    WithModel("gpt-3.5-turbo").
+    WithModel("gpt-4o").
     WithPrompt("Analyze the research and provide insights.").
     WithClient(llmClient)
 
@@ -230,6 +267,77 @@ jsonAgent := agent.NewChatAgent("json-responder").
     WithJSONResponse().
     WithClient(llmClient)
 ```
+
+## 🔀 Multi-Provider Router
+
+For advanced use cases, you can use the built-in router to seamlessly switch between different LLM providers:
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+    
+    "github.com/ratlabs-io/go-agent-kit/examples/integrations/clients"
+    "github.com/ratlabs-io/go-agent-kit/pkg/agent"
+    "github.com/ratlabs-io/go-agent-kit/pkg/llm"
+    "github.com/ratlabs-io/go-agent-kit/pkg/workflow"
+)
+
+func main() {
+    // Set up the router once
+    router := llm.NewRouterClient()
+    
+    // Register your preferred LLM providers
+    if apiKey := os.Getenv("OPENAI_API_KEY"); apiKey != "" {
+        router.Register("openai", clients.NewOpenAIClient(apiKey))
+    }
+    if apiKey := os.Getenv("ANTHROPIC_API_KEY"); apiKey != "" {
+        router.Register("anthropic", clients.NewAnthropicClient(apiKey))
+    }
+    if apiKey := os.Getenv("GEMINI_API_KEY"); apiKey != "" {
+        router.Register("gemini", clients.NewGeminiClient(apiKey))
+    }
+    if apiKey := os.Getenv("GROK_API_KEY"); apiKey != "" {
+        router.Register("grok", clients.NewGrokClient(apiKey))
+    }
+    
+    // Create agents with automatic provider routing
+    researchAgent := agent.NewChatAgent("researcher").
+        WithModel("openai/gpt-4o").              // Routes to OpenAI
+        WithPrompt("Research the topic and gather key facts.").
+        WithClient(router)
+
+    summaryAgent := agent.NewChatAgent("summarizer").
+        WithModel("anthropic/claude-3-haiku-20240307").  // Routes to Anthropic
+        WithPrompt("Create a concise summary of the research.").
+        WithClient(router)
+
+    analyzerAgent := agent.NewChatAgent("analyzer").
+        WithModel("gemini/gemini-1.5-pro").      // Routes to Gemini
+        WithPrompt("Analyze the research and provide insights.").
+        WithClient(router)
+    
+    // Use different providers in the same workflow
+    pipeline := workflow.NewSequentialFlow("multi-provider-pipeline").
+        Then(researchAgent).
+        ThenChain(summaryAgent).
+        ThenChain(analyzerAgent)
+    
+    ctx := workflow.NewWorkContext(context.Background())
+    ctx.Set("user_input", "Benefits of renewable energy")
+    report := pipeline.Run(ctx)
+}
+```
+
+### Router Benefits
+
+- **Provider Flexibility**: Switch providers without changing agent code
+- **Cost Optimization**: Use different models for different tasks (fast models for simple tasks, powerful models for complex analysis)
+- **Redundancy**: Fallback to different providers if one is unavailable
+- **A/B Testing**: Easy comparison between different models and providers
 
 ## 🔄 Workflow Patterns
 
@@ -495,7 +603,7 @@ type MyLLMClient struct {
 
 func (c *MyLLMClient) Complete(ctx context.Context, req llm.CompletionRequest) (*llm.CompletionResponse, error) {
     // Your LLM API integration
-    // Handle req.Messages, req.Tools, etc.
+    // Handle req.Messages, req.Tools, req.MaxTokens, req.Temperature, req.TopP, etc.
     return &llm.CompletionResponse{
         Content: "response text",
         Usage: llm.TokenUsage{
@@ -542,8 +650,13 @@ report := chatAgent.Run(workCtx)
 
 ## 🧪 Examples
 
-Explore comprehensive examples in [`examples/workflows/`](./examples/workflows/):
+Explore comprehensive examples in [`examples/`](./examples/):
 
+### Router & Integrations
+- **[llm-router](./examples/llm-router/)**: Multi-provider LLM routing with OpenAI, Anthropic, Grok, Gemini
+- **[integrations/clients](./examples/integrations/clients/)**: Individual LLM provider implementations
+
+### Workflow Examples
 - **[simple-agent](./examples/workflows/simple-agent/)**: Basic chat completion
 - **[simple-agent-with-callbacks](./examples/workflows/simple-agent-with-callbacks/)**: Event monitoring
 - **[structured-json-agent](./examples/workflows/structured-json-agent/)**: JSON schema responses
@@ -565,10 +678,16 @@ Explore comprehensive examples in [`examples/workflows/`](./examples/workflows/)
 ### Running Examples
 
 ```bash
-# Set your OpenAI API key
-export OPENAI_API_KEY=your-actual-api-key-here
+# Set your API keys (one or more)
+export OPENAI_API_KEY=your-openai-key
+export ANTHROPIC_API_KEY=your-anthropic-key
+export GEMINI_API_KEY=your-gemini-key
+export GROK_API_KEY=your-grok-key
 
-# Run any example
+# Try the multi-provider router
+go run examples/llm-router/main.go
+
+# Run any workflow example
 go run examples/workflows/simple-agent/main.go
 go run examples/workflows/structured-json-agent/main.go
 go run examples/workflows/chat-with-history/main.go

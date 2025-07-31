@@ -21,13 +21,19 @@ type ChatAgent struct {
 	client       llm.Client
 	jsonSchema   *llm.JSONSchema
 	responseType llm.ResponseType
+	maxTokens    int
+	temperature  float64
+	topP         float64
 }
 
 // NewChatAgent creates a new ChatAgent with the given name.
 func NewChatAgent(name string) *ChatAgent {
 	return &ChatAgent{
-		name:      name,
-		agentType: TypeChat,
+		name:        name,
+		agentType:   TypeChat,
+		maxTokens:   4000, // Default max tokens
+		temperature: 0.7,  // Default temperature
+		topP:        0.95, // Default top-p
 	}
 }
 
@@ -57,6 +63,15 @@ func (ca *ChatAgent) Configure(config map[string]interface{}) error {
 	}
 	if responseType, ok := config["response_type"].(string); ok {
 		ca.responseType = llm.ResponseType(responseType)
+	}
+	if maxTokens, ok := config["max_tokens"].(int); ok {
+		ca.maxTokens = maxTokens
+	}
+	if temperature, ok := config["temperature"].(float64); ok {
+		ca.temperature = temperature
+	}
+	if topP, ok := config["top_p"].(float64); ok {
+		ca.topP = topP
 	}
 	// Note: LLM client must be provided via WithClient() - no default implementation
 	return nil
@@ -104,6 +119,24 @@ func (ca *ChatAgent) WithJSONResponse() *ChatAgent {
 // WithResponseType sets the response type for the agent.
 func (ca *ChatAgent) WithResponseType(responseType llm.ResponseType) *ChatAgent {
 	ca.responseType = responseType
+	return ca
+}
+
+// WithMaxTokens sets the maximum number of tokens to generate.
+func (ca *ChatAgent) WithMaxTokens(maxTokens int) *ChatAgent {
+	ca.maxTokens = maxTokens
+	return ca
+}
+
+// WithTemperature sets the sampling temperature (0.0 to 2.0).
+func (ca *ChatAgent) WithTemperature(temperature float64) *ChatAgent {
+	ca.temperature = temperature
+	return ca
+}
+
+// WithTopP sets the nucleus sampling parameter (0.0 to 1.0).
+func (ca *ChatAgent) WithTopP(topP float64) *ChatAgent {
+	ca.topP = topP
 	return ca
 }
 
@@ -178,6 +211,9 @@ func (ca *ChatAgent) Run(wctx workflow.WorkContext) workflow.WorkReport {
 		Tools:        toolDefs,
 		JSONSchema:   ca.jsonSchema,
 		ResponseType: ca.responseType,
+		MaxTokens:    ca.maxTokens,
+		Temperature:  ca.temperature,
+		TopP:         ca.topP,
 		Metadata: map[string]interface{}{
 			"agent_name": ca.name,
 			"agent_type": ca.agentType,

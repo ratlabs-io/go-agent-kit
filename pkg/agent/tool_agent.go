@@ -26,6 +26,9 @@ type ToolAgent struct {
 	maxToolCalls int             // Maximum number of tool calls per execution
 	jsonSchema   *llm.JSONSchema
 	responseType llm.ResponseType
+	maxTokens    int
+	temperature  float64
+	topP         float64
 	log          *slog.Logger
 }
 
@@ -35,7 +38,10 @@ func NewToolAgent(name string) *ToolAgent {
 		name:         name,
 		agentType:    TypeTool,
 		tools:        []tools.Tool{},
-		maxToolCalls: 5, // Default maximum tool calls
+		maxToolCalls: 5,    // Default maximum tool calls
+		maxTokens:    4000, // Default max tokens
+		temperature:  0.7,  // Default temperature
+		topP:         0.95, // Default top-p
 		log:          slog.With("agent", "ToolAgent", "name", name),
 	}
 }
@@ -68,6 +74,15 @@ func (ta *ToolAgent) Configure(config map[string]interface{}) error {
 	}
 	if responseType, ok := config["response_type"].(string); ok {
 		ta.responseType = llm.ResponseType(responseType)
+	}
+	if maxTokens, ok := config["max_tokens"].(int); ok {
+		ta.maxTokens = maxTokens
+	}
+	if temperature, ok := config["temperature"].(float64); ok {
+		ta.temperature = temperature
+	}
+	if topP, ok := config["top_p"].(float64); ok {
+		ta.topP = topP
 	}
 	// Note: LLM client must be provided via WithClient() - no default implementation
 	return nil
@@ -126,6 +141,24 @@ func (ta *ToolAgent) WithJSONResponse() *ToolAgent {
 // WithResponseType sets the response type for the agent.
 func (ta *ToolAgent) WithResponseType(responseType llm.ResponseType) *ToolAgent {
 	ta.responseType = responseType
+	return ta
+}
+
+// WithMaxTokens sets the maximum number of tokens to generate.
+func (ta *ToolAgent) WithMaxTokens(maxTokens int) *ToolAgent {
+	ta.maxTokens = maxTokens
+	return ta
+}
+
+// WithTemperature sets the sampling temperature (0.0 to 2.0).
+func (ta *ToolAgent) WithTemperature(temperature float64) *ToolAgent {
+	ta.temperature = temperature
+	return ta
+}
+
+// WithTopP sets the nucleus sampling parameter (0.0 to 1.0).
+func (ta *ToolAgent) WithTopP(topP float64) *ToolAgent {
+	ta.topP = topP
 	return ta
 }
 
@@ -256,6 +289,9 @@ func (ta *ToolAgent) executeSimpleToolCalling(wctx workflow.WorkContext, startTi
 			Tools:        toolDefs,
 			JSONSchema:   ta.jsonSchema,
 			ResponseType: ta.responseType,
+			MaxTokens:    ta.maxTokens,
+			Temperature:  ta.temperature,
+			TopP:         ta.topP,
 			Metadata: map[string]interface{}{
 				"agent_name":     ta.name,
 				"agent_type":     ta.agentType,

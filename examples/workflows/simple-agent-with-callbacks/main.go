@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/ratlabs-io/go-agent-kit/examples/integrations/openai"
+	"github.com/ratlabs-io/go-agent-kit/examples/integrations/clients"
 	"github.com/ratlabs-io/go-agent-kit/pkg/agent"
 	"github.com/ratlabs-io/go-agent-kit/pkg/llm"
 	"github.com/ratlabs-io/go-agent-kit/pkg/workflow"
@@ -25,7 +25,7 @@ func main() {
 	}
 
 	// Create OpenAI client
-	llmClient := openai.NewClient(apiKey)
+	llmClient := clients.NewOpenAIClient(apiKey)
 
 	// Create callback registry for monitoring
 	callbacks := workflow.NewCallbackRegistry()

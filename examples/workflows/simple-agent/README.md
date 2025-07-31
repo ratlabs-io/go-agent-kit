@@ -12,8 +12,9 @@ This example demonstrates a basic workflow with a single chat agent - the founda
 
 ## Key concepts
 
-- **ChatAgent creation**: `agent.NewChatAgent("name")`
+- **ChatAgent creation**: `agent.NewChatAgent("name")` with smart defaults (4000 tokens, 0.7 temperature, 0.95 top-p)
 - **Fluent configuration**: `.WithModel()`, `.WithPrompt()`, `.WithClient()`
+- **Generation parameters**: `.WithMaxTokens()`, `.WithTemperature()`, `.WithTopP()` for fine-tuning
 - **JSON responses**: `.WithJSONResponse()` for structured output
 - **Execution context**: `workflow.NewWorkContext(ctx)`
 - **Running agents**: `agent.Run(workflowCtx)`

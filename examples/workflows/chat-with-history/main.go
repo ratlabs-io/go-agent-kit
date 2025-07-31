@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ratlabs-io/go-agent-kit/examples/integrations/openai"
+	"github.com/ratlabs-io/go-agent-kit/examples/integrations/clients"
 	"github.com/ratlabs-io/go-agent-kit/pkg/agent"
 	"github.com/ratlabs-io/go-agent-kit/pkg/constants"
 	"github.com/ratlabs-io/go-agent-kit/pkg/llm"
@@ -26,7 +26,7 @@ func main() {
 	}
 
 	// Create OpenAI client
-	llmClient := openai.NewClient(apiKey)
+	llmClient := clients.NewOpenAIClient(apiKey)
 
 	// Example 1: Basic Chat with History
 	fmt.Println("\n--- Example 1: Basic Chat with History ---")
