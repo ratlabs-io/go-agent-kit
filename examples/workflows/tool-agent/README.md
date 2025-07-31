@@ -11,8 +11,9 @@ This example demonstrates an agent that can use tools to complete complex tasks 
 
 ## Key concepts
 
-- **ToolAgent creation**: `agent.NewToolAgent("name")`
+- **ToolAgent creation**: `agent.NewToolAgent("name")` with smart defaults (4000 tokens, 0.7 temperature, 0.95 top-p)
 - **Tool registration**: `.WithTools(tool1, tool2, tool3)`
+- **Generation parameters**: `.WithTemperature(0.3)` for more deterministic tool use
 - **Tool interfaces**: Both `Tool` and `SimpleTool` patterns
 - **Tool wrapping**: `tools.WrapSimpleTool()` for simple tools
 - **Tool execution**: Automatic tool calling based on LLM decisions
